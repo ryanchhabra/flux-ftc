@@ -1,4 +1,5 @@
 plugins {
+    `maven-publish`
     `kotlin-dsl`
     `java-gradle-plugin`
 }
@@ -43,10 +44,41 @@ gradlePlugin {
             implementationClass = "dev.flux.gradle.FluxPlugin"
             displayName = "FTC Flux"
             description = "Hot-code-reload deploy pipeline for FIRST Tech Challenge TeamCode."
+            tags = listOf("ftc", "android", "hot-reload", "robotics")
         }
     }
 }
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+// Plugin Portal publishing needs these; harmless locally, required before a real release.
+// See docs/design/distribution.md.
+gradlePlugin {
+    website = "https://github.com/ryanchhabra/ftc-flux"
+    vcsUrl = "https://github.com/ryanchhabra/ftc-flux"
+}
+
+publishing {
+    publications.withType<MavenPublication>().configureEach {
+        pom {
+            name = "FTC Flux Gradle Plugin"
+            description = "Compile, dex, push and hot-reload FTC TeamCode in well under a second."
+            url = "https://github.com/ryanchhabra/ftc-flux"
+            licenses {
+                license {
+                    name = "MIT License"
+                    url = "https://opensource.org/licenses/MIT"
+                }
+            }
+            developers {
+                developer {
+                    id = "ryanchhabra"
+                    name = "Ryan Chhabra"
+                }
+            }
+        }
+    }
+    // mavenLocal only for now -- a remote needs an account and signing keys we don't have yet.
 }

@@ -111,6 +111,25 @@ A `BroadcastReceiver` for `dev.flux.LIVE_TUNE`, registered the same `@OnCreate`/
 action, so a live-tune broadcast can never be misrouted into the much more expensive reload path.
 Calls `FluxLiveTuning.apply(...)` and reports the result via `setResultCode(...)`.
 
+### `FluxLiveReadback`
+Live-value read-back (CONTRACT.md Amendment 4) — the mirror image of `FluxLiveTuning`. The desktop
+already knows the full `@FluxLive` class set (the same scan `LiveTuneDetector` does for `fluxTune`),
+so instead of scanning the whole dex on-device it pushes a small JSON request naming the classes it
+wants (`live_read_request.json`, a flat array of class-name strings). This class resolves each name
+**through the current Flux generation's classloader** — the same rule as Amendment 3, for the same
+reason: reading a stale generation's `Class` object would report a value the running OpMode isn't
+actually using — reads every eligible static field (same eligibility as `FluxLiveTuning`: declared
+directly on an `@FluxLive` class, `static`, not `final`, primitive/`String`/enum), and writes the
+current values to `live_values_current.json` in the exact same flat-array shape
+`FluxLiveTuning`'s payload uses, so the desktop reuses one parser for both directions. Same
+three-code result triad.
+
+### `FluxLiveReadReceiver`
+A `BroadcastReceiver` for `dev.flux.LIVE_READ`, registered the same `@OnCreate`/`@OnDestroy` way as
+the other two receivers, and kept separate from them for the same "one action, one receiver, one
+result path" reasoning. Calls `FluxLiveReadback.apply(...)` and reports the result via
+`setResultCode(...)`.
+
 ## What's verified vs. assumed
 
 Every SDK method/field signature this module calls was checked with `javap -p` against the real

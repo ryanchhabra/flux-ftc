@@ -1,0 +1,30 @@
+// Lets flux-runtime build and publish on its own (`gradle publishToMavenLocal`).
+//
+// It is ALSO consumed as a composite include by test-ftc-project/sdk, which points at this
+// directory via project(':flux-runtime').projectDir. Gradle ignores a nested settings file for an
+// included project, so both paths work; if that ever stops being true, the test project's build is
+// the thing that breaks, so run it after touching this file.
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    // AGP's version is declared here rather than in build.gradle's plugins block on purpose.
+    // When flux-runtime is included as a composite subproject this settings file is ignored, so
+    // the version comes from the including build; declaring it in the plugins block instead would
+    // collide there ("plugin already on the classpath with an unknown version"). Keep this in step
+    // with the AGP version the FTC SDK ships.
+    plugins {
+        id 'com.android.library' version '8.13.2'
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'flux-runtime'

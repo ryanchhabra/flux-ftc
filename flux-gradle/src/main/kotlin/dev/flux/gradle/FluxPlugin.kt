@@ -10,6 +10,7 @@ import dev.flux.gradle.tasks.FluxDeploy
 import dev.flux.gradle.tasks.FluxDex
 import dev.flux.gradle.tasks.FluxDoctor
 import dev.flux.gradle.tasks.FluxPush
+import dev.flux.gradle.tasks.FluxRead
 import dev.flux.gradle.tasks.FluxSyncBaseline
 import dev.flux.gradle.tasks.FluxReload
 import dev.flux.gradle.tasks.FluxTune
@@ -310,6 +311,18 @@ abstract class FluxPlugin @Inject constructor(
                     }
                 },
             )
+        }
+
+        // --- fluxRead (CONTRACT.md Amendment 4) ---
+        // Standalone: no dependency on fluxAssemble/tier classification. It's a query ("what is the
+        // robot actually running right now"), not a deploy, and the source scan it needs
+        // (LiveTuneDetector.currentFields) is cheap enough to just do inline in the task action.
+        project.tasks.register<FluxRead>("fluxRead") {
+            group = "flux"
+            description = "Read back current on-robot @FluxLive values and diff against source (CONTRACT.md Amendment 4)."
+            variant.sources.java?.static?.let { teamCodeSourceDirs.from(it) }
+            adbPath.set(adbPathProvider)
+            deployLocation.set(extension.deployLocation)
         }
 
         // --- fluxDoctor ---

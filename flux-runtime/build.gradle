@@ -15,7 +15,13 @@
 
 plugins {
     id 'com.android.library'
+    id 'maven-publish'
 }
+
+// Must match flux-gradle's coordinates: the two halves speak one wire protocol (CONTRACT.md) and
+// a version mismatch between them is exactly the skew that produces confusing robot-side failures.
+group = 'dev.flux'
+version = '0.1.0-alpha'
 
 android {
     namespace 'dev.flux.runtime'
@@ -30,6 +36,15 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+    // Publish only the release variant. Sources are included because teams WILL end up reading
+    // this code when a reload misbehaves -- the classloader logic is subtle, and the comments
+    // explaining why it's shaped this way are most of its value.
+    publishing {
+        singleVariant('release') {
+            withSourcesJar()
+        }
+    }
 }
 
 repositories {
@@ -41,4 +56,37 @@ dependencies {
     // compileOnly: see the module-level comment above. The host RC app supplies these at runtime.
     compileOnly 'org.firstinspires.ftc:RobotCore:12.0.0'
     compileOnly 'org.firstinspires.ftc:FtcCommon:12.0.0'
+}
+
+publishing {
+    publications {
+        release(MavenPublication) {
+            // afterEvaluate: the Android library's `release` software component does not exist
+            // until AGP has finished configuring its variants.
+            afterEvaluate { from components.release }
+
+            artifactId = 'flux-runtime'
+
+            pom {
+                name = 'FTC Flux Runtime'
+                description = 'On-robot runtime for FTC Flux hot code reload: classloaders, ' +
+                        'reload engine, and live tuning. Ships inside the Robot Controller APK.'
+                url = 'https://github.com/ryanchhabra/ftc-flux'
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://opensource.org/licenses/MIT'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'ryanchhabra'
+                        name = 'Ryan Chhabra'
+                    }
+                }
+            }
+        }
+    }
+    // Only mavenLocal for now. A real remote (Maven Central / GitHub Packages) needs an account,
+    // signing keys, and a namespace we don't own yet -- see docs/design/distribution.md.
 }
