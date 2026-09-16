@@ -23,6 +23,21 @@ object TierDetector {
     private const val STATE_FILE_NAME = "tier-state.properties"
 
     /**
+     * Where a classification parks its fingerprint until the robot confirms it.
+     *
+     * Classification runs before anything is pushed, so writing straight to [STATE_FILE_NAME]
+     * recorded "this is what the robot has" while the robot had nothing of the sort. When the
+     * deploy then failed, the next run compared against that lie and reported "nothing changed
+     * since the last deploy", silently dropping the user's edit while claiming success. That was
+     * reproduced: close the Robot Controller, change a constant, deploy (fails), reopen, deploy
+     * again -> tier 0, and fluxRead showed the robot still holding the old value.
+     *
+     * A pending file is always overwritten by the next classification, so a stale one left by a
+     * failed deploy can never be committed by a later, unrelated success.
+     */
+    private const val PENDING_FILE_NAME = "tier-state.pending.properties"
+
+    /**
      * Bumped whenever the MEANING of a recorded field changes, not merely its value.
      *
      * Without this, upgrading Flux silently produced a nonsense block. When dependency recording
@@ -172,11 +187,12 @@ object TierDetector {
             else -> Tier.Hot
         }
 
-        // Only persist state on a non-blocked outcome — a blocked deploy didn't actually reach
-        // the robot, so the "last known good" fingerprint must not move.
+        // Written as PENDING, never as the baseline: at this point nothing has been pushed, let
+        // alone loaded. [commitPending] promotes it once the robot says result=1. A blocked
+        // outcome writes nothing at all, since it will not even be attempted.
         if (result !is Tier.Blocked) {
             saveState(
-                stateFile,
+                File(stateDir, PENDING_FILE_NAME),
                 State(
                     buildId = currentBuildId,
                     manifestHash = manifestHash,
@@ -203,23 +219,27 @@ object TierDetector {
      * the block would still be there on every subsequent run, even after the user did the full
      * install we told them to do.
      */
+
     /**
-     * Clears only the recorded BUILD_ID, so the next deploy cannot classify as Tier 0.
-     *
-     * Tier state is written during classification, which happens before anything is pushed. If the
-     * reload then fails -- the Robot Controller app was closed, say -- the baseline has already
-     * moved, and the retry reports "nothing changed since the last deploy" and skips. The user
-     * fixes the actual problem, runs fluxDeploy again, is told everything is fine, and the robot
-     * is still running the old code. Hit exactly this way on the emulator.
-     *
-     * Only the BUILD_ID is cleared, not the whole file. Dropping the manifest/res/assets/deps
-     * fingerprints too would mean a genuine Tier 3 change made after the failure went undetected
-     * until the next full install, trading a visible annoyance for a silent one.
+     * Promotes the pending fingerprint to the baseline. Called only once the robot has confirmed
+     * it is running the new code, which is the only moment the claim is actually true.
      */
-    fun invalidateBuildId(stateDir: File) {
-        val file = File(stateDir, STATE_FILE_NAME)
-        val existing = (loadState(file) as? Loaded.Ok)?.state ?: return
-        saveState(file, existing.copy(buildId = ""))
+    fun commitPending(stateDir: File) {
+        val pending = File(stateDir, PENDING_FILE_NAME)
+        if (!pending.isFile) return
+        val committed = File(stateDir, STATE_FILE_NAME)
+        try {
+            pending.copyTo(committed, overwrite = true)
+            pending.delete()
+        } catch (e: Exception) {
+            // Losing the commit means the next deploy redoes work it did not need to. Losing the
+            // build over it would be worse.
+        }
+    }
+
+    /** Drops any pending fingerprint, e.g. after a full install supersedes it. */
+    fun discardPending(stateDir: File) {
+        File(stateDir, PENDING_FILE_NAME).delete()
     }
 
     fun recordBaseline(

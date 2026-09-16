@@ -11,6 +11,7 @@ import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import dev.ryanchhab.flux.gradle.TierDetector
+import dev.ryanchhab.flux.gradle.LiveTuneDetector
 import dev.ryanchhab.flux.gradle.RobotReachability
 import org.gradle.process.ExecOperations
 import org.gradle.work.DisableCachingByDefault
@@ -55,6 +56,9 @@ abstract class FluxReload : DefaultTask() {
     @get:Internal
     abstract val tierStateDir: DirectoryProperty
 
+    @get:Internal
+    abstract val liveTuneStateDir: DirectoryProperty
+
     /**
      * The team's `flux { safetyPolicy = ... }`, sent with the broadcast. The robot decides; the
      * plugin only reports what came back. Sending it on every reload rather than configuring the
@@ -91,10 +95,15 @@ abstract class FluxReload : DefaultTask() {
         val elapsedMs = (System.nanoTime() - start) / 1_000_000
         timingService.orNull?.record(FluxTimingService.STAGE_RELOAD, elapsedMs)
 
-        // Any outcome other than a confirmed success means the robot is NOT running this build, so
-        // the baseline recorded during classification must not be allowed to stand.
-        if (code != 1) {
-            tierStateDir.orNull?.asFile?.let { TierDetector.invalidateBuildId(it) }
+        // The baseline advances here and nowhere earlier. Classification runs before anything is
+        // pushed, so only a confirmed result=1 makes "the robot is running this build" true. Any
+        // other outcome simply leaves the pending fingerprint uncommitted, and the next deploy
+        // correctly sees the change as still outstanding.
+        if (code == 1) {
+            tierStateDir.orNull?.asFile?.let { TierDetector.commitPending(it) }
+            // A hot reload ships the new constant values too, so the live-tune snapshot is now
+            // accurate as well; leaving it behind would make the next deploy re-send them.
+            liveTuneStateDir.orNull?.asFile?.let { LiveTuneDetector.commitPending(it) }
         }
 
         if (result.exitValue != 0) {

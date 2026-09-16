@@ -20,6 +20,7 @@ import dev.ryanchhab.flux.gradle.tasks.FluxReload
 import dev.ryanchhab.flux.gradle.tasks.FluxTune
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
+import org.gradle.api.JavaVersion
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.artifacts.Configuration
@@ -46,9 +47,47 @@ abstract class FluxPlugin @Inject constructor(
 
     companion object {
         const val MIN_API = 24 // CONTRACT.md — must match the app's minSdk exactly (risks.md §7).
+
+        /** What FIRST ships and what Flux is tested against. */
+        val SUPPORTED_JDK: JavaVersion = JavaVersion.VERSION_17
+    }
+
+    /**
+     * Warns when Gradle is running on a JDK newer than the FTC toolchain supports.
+     *
+     * The symptom otherwise is `Unsupported class file major version NN` from somewhere deep in
+     * AGP or Kotlin, which names neither the JDK nor the fix, and which teams reliably read as
+     * "Flux is broken".
+     *
+     * Warns rather than fails, deliberately. JDK 17 is what FIRST ships and what Flux is tested
+     * on; 18 and up are simply untested here, and turning an untested configuration into a hard
+     * refusal would break builds that may work perfectly well. A build that is genuinely going to
+     * fail will fail a moment later anyway, and this line will be sitting above the wreckage
+     * explaining it.
+     *
+     * Note this can only help once the plugin is loaded. If the JDK is new enough that Gradle
+     * cannot even compile the build script that applies Flux, nothing here runs -- that case is
+     * solved by pinning `org.gradle.java.home` in gradle.properties, which is what the test
+     * projects do.
+     */
+    private fun warnIfJdkIsNewerThanFtcSupports(project: Project) {
+        val current = JavaVersion.current()
+        if (current > SUPPORTED_JDK) {
+            project.logger.warn(
+                "Flux: this build is running on JDK ${current.majorVersion}. The FTC toolchain " +
+                    "targets JDK ${SUPPORTED_JDK.majorVersion}, and newer JDKs typically fail " +
+                    "with \"Unsupported class file major version\" somewhere inside AGP or " +
+                    "Kotlin rather than saying so plainly.\n" +
+                    "  If this build fails, set JAVA_HOME to a JDK ${SUPPORTED_JDK.majorVersion} " +
+                    "install, or pin it for everyone by adding to gradle.properties:\n" +
+                    "    org.gradle.java.home=/path/to/jdk-${SUPPORTED_JDK.majorVersion}",
+            )
+        }
     }
 
     override fun apply(project: Project) {
+        warnIfJdkIsNewerThanFtcSupports(project)
+
         val extension = project.extensions.create("flux", FluxExtension::class.java)
 
         val timingService = project.gradle.sharedServices.registerIfAbsent(
@@ -221,6 +260,7 @@ abstract class FluxPlugin @Inject constructor(
             dependencyNotations.set(dependencyNotationsProvider)
             tierStateDir.set(tierStateDirLoc)
             deviceStateDir.set(deviceStateDirLoc)
+            liveTuneStateDir.set(liveTuneStateDirLoc)
         }
 
         // --- fluxClearBundle (CONTRACT.md Amendment 5) ---
@@ -309,6 +349,7 @@ abstract class FluxPlugin @Inject constructor(
         // --- fluxReload ---
         val fluxReload = project.tasks.register<FluxReload>("fluxReload") {
             tierStateDir.set(tierStateDirLoc)
+            liveTuneStateDir.set(liveTuneStateDirLoc)
             safetyPolicy.set(extension.safetyPolicy.map { it.name })
             group = "flux"
             description = "adb shell am broadcast -a dev.ryanchhab.flux.RELOAD, parse result code (CONTRACT.md)."
@@ -324,6 +365,8 @@ abstract class FluxPlugin @Inject constructor(
         // Deliberately depends on fluxAssemble only, not fluxDex/fluxPush/fluxReload: the whole
         // point of Tier L is to skip compile/dex/reload entirely (live-tuning.md §2).
         val fluxTune = project.tasks.register<FluxTune>("fluxTune") {
+            tierStateDir.set(tierStateDirLoc)
+            liveTuneStateDir.set(liveTuneStateDirLoc)
             group = "flux"
             description = "Push live_values.json + adb shell am broadcast -a dev.ryanchhab.flux.LIVE_TUNE (CONTRACT.md Amendment 3)."
             dependsOn(fluxAssemble)

@@ -1,6 +1,7 @@
 package dev.ryanchhab.flux.gradle.tasks
 
 import dev.ryanchhab.flux.gradle.DeviceDriverGuard
+import dev.ryanchhab.flux.gradle.LiveTuneDetector
 import dev.ryanchhab.flux.gradle.TierDetector
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
@@ -90,6 +91,9 @@ abstract class FluxSyncBaseline : DefaultTask() {
     @get:OutputDirectory
     abstract val deviceStateDir: DirectoryProperty
 
+    @get:OutputDirectory
+    abstract val liveTuneStateDir: DirectoryProperty
+
     init {
         group = "flux"
         description = "Record the current source state as Flux's known-good baseline (runs after a full install)."
@@ -117,6 +121,10 @@ abstract class FluxSyncBaseline : DefaultTask() {
                 classesJars = classesJars.getOrElse(emptyList()).map { it.asFile },
             ),
         )
+        // A full install supersedes anything a failed deploy left pending: the robot now matches
+        // the source tree by definition, so an older proposal must not survive to be committed.
+        TierDetector.discardPending(tierStateDir.get().asFile)
+        LiveTuneDetector.discardPending(liveTuneStateDir.get().asFile)
         logger.lifecycle("Flux: baseline synced — the next fluxDeploy compares against this install.")
     }
 }

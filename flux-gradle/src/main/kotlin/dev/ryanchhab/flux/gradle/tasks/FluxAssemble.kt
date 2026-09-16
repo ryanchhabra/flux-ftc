@@ -176,7 +176,6 @@ abstract class FluxAssemble : DefaultTask() {
         val liveTune = LiveTuneDetector.detect(
             stateDir = liveTuneStateDir.get().asFile,
             sourceDirs = teamCodeSourceDirs.files.toList(),
-            advanceBaseline = tier !is TierDetector.Tier.Blocked,
         )
         val liveTuneOutcome = when (liveTune) {
             is LiveTuneDetector.Result.Tunable -> LiveTuneOutcome(

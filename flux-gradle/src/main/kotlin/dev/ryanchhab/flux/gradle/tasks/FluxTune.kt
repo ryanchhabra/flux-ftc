@@ -3,6 +3,9 @@ package dev.ryanchhab.flux.gradle.tasks
 import dev.ryanchhab.flux.gradle.FluxTimingService
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
+import org.gradle.api.file.DirectoryProperty
+import dev.ryanchhab.flux.gradle.TierDetector
+import dev.ryanchhab.flux.gradle.LiveTuneDetector
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
@@ -55,6 +58,17 @@ abstract class FluxTune : DefaultTask() {
 
     @get:Internal
     abstract val timingService: Property<FluxTimingService>
+
+    /**
+     * State directories, so a confirmed tune is the thing that advances the baseline rather than
+     * the classification that merely proposed it. Without this a live tune that failed to reach
+     * the robot still consumed the source change, and the next deploy reported nothing to do.
+     */
+    @get:Internal
+    abstract val tierStateDir: DirectoryProperty
+
+    @get:Internal
+    abstract val liveTuneStateDir: DirectoryProperty
 
     @TaskAction
     fun tune() {
@@ -121,7 +135,11 @@ abstract class FluxTune : DefaultTask() {
             val fieldList = fields.joinToString(", ") { "${simpleName(it.className)}.${it.fieldName}=${it.value}" }
 
             when (code) {
-                1 -> logger.lifecycle("Flux: live tune SUCCESS -- $fieldList")
+                1 -> {
+                    logger.lifecycle("Flux: live tune SUCCESS -- $fieldList")
+                    liveTuneStateDir.orNull?.asFile?.let { LiveTuneDetector.commitPending(it) }
+                    tierStateDir.orNull?.asFile?.let { TierDetector.commitPending(it) }
+                }
 
                 2 -> throw GradleException(
                     "Flux: live tune FAILED_CLEAN (result=2).\n" +
