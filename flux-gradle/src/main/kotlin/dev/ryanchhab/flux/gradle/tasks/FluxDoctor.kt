@@ -1,5 +1,6 @@
 package dev.ryanchhab.flux.gradle.tasks
 
+import dev.ryanchhab.flux.gradle.SdkSupport
 import org.gradle.api.DefaultTask
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
@@ -18,16 +19,14 @@ import javax.inject.Inject
  * Phase 0 checks:
  *  1. Is adb on PATH or locatable at all.
  *  2. Is a device/emulator connected and authorized.
- *  3. Is a Robot Controller package installed, and does it have a receiver registered for
- *     `dev.ryanchhab.flux.RELOAD` (best-effort presence check for the flux-runtime side; see the class doc
- *     TODO below for why this can't yet be a full version handshake).
- *  4. Is the FTC SDK version on the module's classpath one Flux Phase 0 supports (RobotCore
- *     12.0.0 per CONTRACT.md).
+ *  3. Is a Robot Controller package installed, and does its embedded flux-runtime answer a ping.
+ *  4. Do the runtime and this plugin agree on a version (they speak one wire protocol).
+ *  5. Is the FTC SDK on the module's classpath one Flux supports — see [SdkSupport] for how that
+ *     range was measured.
  *
- * TODO(Phase 1+): a real version handshake needs flux-protocol (architecture.md §7's versioned
- * handshake). Until that socket exists, "runtime present" is inferred by grepping
- * `dumpsys package` for a registered `dev.ryanchhab.flux.RELOAD` receiver, which cannot report the
- * runtime's *version* — only that *something* is listening for the action.
+ * Checks report PASS, WARN or FAIL. WARN exists because "not the version we test against" is not
+ * the same as "broken", and a diagnostic that cries wolf gets ignored. Only FAIL sets a non-clean
+ * overall result.
  */
 @DisableCachingByDefault(because = "Diagnostic task that probes the live adb connection and the device; its whole value is being current.")
 abstract class FluxDoctor : DefaultTask() {
@@ -48,8 +47,6 @@ abstract class FluxDoctor : DefaultTask() {
     abstract val robotCoreVersion: Property<String>
 
     companion object {
-        const val SUPPORTED_SDK_VERSION = "12.0.0"
-
         /**
          * This plugin's version, compared against what the on-robot runtime reports over
          * dev.ryanchhab.flux.PING. Must track flux-gradle/build.gradle.kts's `version` and
@@ -63,11 +60,22 @@ abstract class FluxDoctor : DefaultTask() {
     fun diagnose() {
         val lines = mutableListOf<String>()
         var allPass = true
+        var anyWarn = false
+
+        fun report(status: String, label: String, detail: String, fix: String? = null) {
+            lines += "  [$status] $label — $detail"
+            if (fix != null && status != "PASS") lines += "         ${if (status == "WARN") "Note" else "Fix"}: $fix"
+        }
 
         fun check(label: String, pass: Boolean, detail: String, fix: String? = null) {
             allPass = allPass && pass
-            lines += "  [${if (pass) "PASS" else "FAIL"}] $label — $detail"
-            if (!pass && fix != null) lines += "         Fix: $fix"
+            report(if (pass) "PASS" else "FAIL", label, detail, fix)
+        }
+
+        /** A WARN is informational: it prints, but it does not make fluxDoctor report failure. */
+        fun warn(label: String, detail: String, note: String? = null) {
+            anyWarn = true
+            report("WARN", label, detail, note)
         }
 
         val adb = adbPath.orNull
@@ -146,16 +154,33 @@ abstract class FluxDoctor : DefaultTask() {
         }
 
         val sdkVersion = robotCoreVersion.orNull
-        check(
-            "FTC SDK version supported",
-            sdkVersion == SUPPORTED_SDK_VERSION,
-            sdkVersion?.let { "RobotCore $it" } ?: "RobotCore dependency not found on the module's classpath",
-            "Flux Phase 0 targets FTC SDK $SUPPORTED_SDK_VERSION; other versions are untested and may not match the classloader exclusion set in CONTRACT.md",
-        )
+        val found = sdkVersion?.let { "RobotCore $it" } ?: "no RobotCore on the module's classpath"
+        when (val verdict = SdkSupport.classify(sdkVersion)) {
+            is SdkSupport.Verdict.Verified ->
+                check("FTC SDK version supported", true, "$found (verified)")
+
+            is SdkSupport.Verdict.Untested ->
+                warn(
+                    "FTC SDK version supported",
+                    "$found — ${verdict.reason}",
+                    "Flux should work here. If it doesn't, that is a bug worth reporting: include " +
+                        "this fluxDoctor output and `adb logcat -s FLUX`.",
+                )
+
+            is SdkSupport.Verdict.Unsupported ->
+                check(
+                    "FTC SDK version supported",
+                    false,
+                    found,
+                    verdict.reason + ". Update the FTC SDK to ${SdkSupport.MINIMUM} or newer.",
+                )
+        }
 
         logger.lifecycle("\nFlux Doctor\n${lines.joinToString("\n")}\n")
         if (!allPass) {
             logger.lifecycle("Some checks failed — see \"Fix:\" lines above.\n")
+        } else if (anyWarn) {
+            logger.lifecycle("No failures. See \"Note:\" lines above for things Flux can't fully vouch for.\n")
         } else {
             logger.lifecycle("All checks passed.\n")
         }

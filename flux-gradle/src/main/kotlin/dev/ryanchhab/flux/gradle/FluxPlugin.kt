@@ -43,7 +43,6 @@ abstract class FluxPlugin @Inject constructor(
 
     companion object {
         const val MIN_API = 24 // CONTRACT.md — must match the app's minSdk exactly (risks.md §7).
-        const val SUPPORTED_ROBOT_CORE_VERSION = "12.0.0"
     }
 
     override fun apply(project: Project) {
@@ -163,10 +162,18 @@ abstract class FluxPlugin @Inject constructor(
         val compileClasspathFiles = compileClasspath?.incoming?.artifactView {
             attributes.attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, "android-classes-jar")
         }?.files
+        // Resolved components, not requested dependencies. Tier detection uses this set to decide
+        // whether the dependency graph changed since the last installDebug -- and if it did, to
+        // refuse a hot reload, because the pushed dex would be running against jars that are not
+        // the ones inside the installed APK. The *requested* set can stay byte-identical while the
+        // *resolved* set moves underneath it: a resolutionStrategy.force, a version catalog bump,
+        // a platform/BOM, or any transitive that pulls a shared library up. Comparing requested
+        // notations would miss every one of those and hot-reload into a mismatched APK, which is
+        // the silent-wrong-behaviour case Flux is supposed to convert into "run installDebug".
         val dependencyNotationsProvider = project.provider {
             (runtimeClasspath ?: compileClasspath)
-                ?.incoming?.resolutionResult?.allDependencies
-                ?.mapNotNull { it.requested.displayName }
+                ?.incoming?.resolutionResult?.allComponents
+                ?.map { it.id.displayName }
                 ?.toSet() ?: emptySet()
         }
 
@@ -353,12 +360,17 @@ abstract class FluxPlugin @Inject constructor(
             adbLocationSource.set(project.provider {
                 (AdbLocator.locate(extension.adbPath.orNull) as? AdbLocation.Found)?.source
             })
+            // allComponents, not allDependencies: the latter reports what was *requested*, which
+            // is not what ends up on the robot the moment anything forces or constrains RobotCore
+            // (a resolutionStrategy.force, a platform, or another dependency pulling it up). Flux
+            // would then diagnose a version the team is not actually running -- the exact class of
+            // confidently-wrong answer a doctor tool exists to prevent.
             robotCoreVersion.set(project.provider {
                 (runtimeClasspath ?: compileClasspath)
-                    ?.incoming?.resolutionResult?.allDependencies
-                    ?.mapNotNull { it.requested.displayName }
-                    ?.firstOrNull { it.contains("RobotCore") }
-                    ?.substringAfterLast(":")
+                    ?.incoming?.resolutionResult?.allComponents
+                    ?.mapNotNull { it.moduleVersion }
+                    ?.firstOrNull { it.name == "RobotCore" }
+                    ?.version
             })
         }
 
