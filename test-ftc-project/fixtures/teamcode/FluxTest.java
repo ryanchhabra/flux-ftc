@@ -9,14 +9,14 @@ public class FluxTest extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-        telemetry.addData("VERSION", "VERSION 13");
+        telemetry.addData("VERSION", "VERSION 1");
         telemetry.addData("BUILD_ID", FluxBuildInfo.buildId());
         telemetry.update();
 
         waitForStart();
 
         while (opModeIsActive()) {
-            telemetry.addData("VERSION", "VERSION 13");
+            telemetry.addData("VERSION", "VERSION 1");
             telemetry.addData("BUILD_ID", FluxBuildInfo.buildId());
             telemetry.update();
             idle();

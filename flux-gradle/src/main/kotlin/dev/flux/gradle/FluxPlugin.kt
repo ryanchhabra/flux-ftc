@@ -6,6 +6,7 @@ import com.android.build.api.variant.AndroidComponentsExtension
 import com.android.build.api.variant.ScopedArtifacts
 import com.android.build.api.variant.Variant
 import dev.flux.gradle.tasks.FluxAssemble
+import dev.flux.gradle.tasks.FluxClearBundle
 import dev.flux.gradle.tasks.FluxDeploy
 import dev.flux.gradle.tasks.FluxDex
 import dev.flux.gradle.tasks.FluxDoctor
@@ -210,10 +211,24 @@ abstract class FluxPlugin @Inject constructor(
             tierStateDir.set(tierStateDirLoc)
         }
 
-        // finalizedBy, not dependsOn: the baseline should only advance once the install has
-        // actually succeeded. Matched by name because the install tasks are created by AGP.
+        // --- fluxClearBundle (CONTRACT.md Amendment 5) ---
+        // A stale on-robot bundle must never survive a fresh install -- see FluxClearBundle's
+        // class doc, and docs/research/sloth-teardown.md §3 for Sloth's identical fix
+        // (removeSlothRemote) to the identical problem.
+        val fluxClearBundle = project.tasks.register<FluxClearBundle>("fluxClearBundle") {
+            adbPathOrNull.set(
+                project.provider {
+                    (AdbLocator.locate(extension.adbPath.orNull) as? AdbLocation.Found)?.file?.absolutePath
+                },
+            )
+            deployLocation.set(extension.deployLocation)
+        }
+
+        // finalizedBy, not dependsOn: the baseline should only advance -- and the bundle should
+        // only be cleared -- once the install has actually succeeded. Matched by name because the
+        // install tasks are created by AGP.
         project.tasks.matching { it.name == "installDebug" || it.name == "installRelease" }
-            .configureEach { finalizedBy(fluxSyncBaseline) }
+            .configureEach { finalizedBy(fluxSyncBaseline, fluxClearBundle) }
 
         // Register the generated source dir so AGP's own compileDebugJavaWithJavac compiles
         // __FluxVersion.java into the normal debug class output — see FluxAssemble's class doc
