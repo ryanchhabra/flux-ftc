@@ -7,16 +7,16 @@ import java.util.Properties
  * Implements the tier classifier from architecture.md §4 — the headline QoL feature. Runs at the
  * start of `fluxDeploy` and decides whether a hot deploy is even safe to attempt.
  *
- * Phase 0 scope, per the task brief:
- *  - Tier 0 (no-op) and Tier 3 (blocked) are fully implemented — Tier 3 is "the feature users
- *    will actually feel" and is the one that must not be skipped.
- *  - Tier 2 (device-driver annotation changes) needs bytecode scanning for the six annotations
- *    in CONTRACT.md's classloader exclusion set (risks.md §1) to distinguish it from Tier 1. That
- *    scan isn't implemented yet — see the TODO on [Tier.HotOrHardware] below — so Flux currently
- *    treats "TeamCode-only change, nothing Tier-3-worthy" as Tier 1 across the board. This is
- *    conservative in the *wrong* direction (a Tier-2 change is still allowed to hot-reload as if
- *    it were Tier 1, rather than getting the HardwareMap rebuild it actually needs), so it is
- *    called out loudly in fluxDeploy's output rather than silently passing as "hot".
+ * Everything this classifier looks at is available before compilation: the manifest, res/, assets/,
+ * native libs, the resolved dependency graph, and a BUILD_ID over the TeamCode sources. That
+ * matters because fluxAssemble generates a source file into the compilation and therefore has to
+ * run before javac.
+ *
+ * Device-driver classes are the one category that is deliberately NOT decided here. Identifying
+ * them reliably needs bytecode, not source text, so that check lives in
+ * [dev.ryanchhab.flux.gradle.tasks.FluxDeviceGuard], which runs after compilation and before
+ * fluxDex. See [dev.ryanchhab.flux.gradle.DeviceDriverGuard] for why source text is not good
+ * enough.
  */
 object TierDetector {
 
@@ -26,11 +26,7 @@ object TierDetector {
         /** Nothing changed since the last recorded deploy. Skip everything. */
         data class NoOp(val buildId: String) : Tier()
 
-        /**
-         * Safe to hot-reload. `hardwareChangeSuspected` is always false today — see the class
-         * doc TODO. Once bytecode scanning lands, a true Tier 2 result should carry
-         * `hardwareChangeSuspected = true` so fluxDeploy can trigger the HardwareMap rebuild path.
-         */
+        /** Safe to hot-reload. */
         data class HotOrHardware(val hardwareChangeSuspected: Boolean) : Tier()
 
         /** Refuse the deploy. Names the exact file/category that forced it, and the fix. */
@@ -57,15 +53,6 @@ object TierDetector {
      * @param currentBuildId the BUILD_ID fluxAssemble computed for this invocation (from the
      *   TeamCode source tree only — see FluxAssemble). Used for the Tier 0 no-op check.
      */
-    private val DEVICE_ANNOTATIONS = listOf(
-        "@I2cDeviceType",
-        "@MotorType",
-        "@ServoType",
-        "@DigitalIoDeviceType",
-        "@AnalogSensorType",
-        "@DeviceProperties",
-    )
-
     fun classify(
         stateDir: File,
         manifestFile: File,
@@ -74,7 +61,6 @@ object TierDetector {
         nativeLibDirs: List<File>,
         dependencyNotations: Set<String>,
         currentBuildId: String,
-        sourceDirs: List<File> = emptyList(),
     ): Tier {
         stateDir.mkdirs()
         val stateFile = File(stateDir, STATE_FILE_NAME)
@@ -85,7 +71,6 @@ object TierDetector {
         val assetsHash = assetDirs.joinToString("|") { Hashing.sha256OfTree(it) }
         val nativeHash = nativeLibDirs.joinToString("|") { Hashing.sha256OfTree(it) }
         val depsHash = Hashing.sha256Hex(dependencyNotations.sorted().joinToString("\n").toByteArray())
-        val deviceFileHashes = deviceDriverSourceHashes(sourceDirs)
 
         val result = when {
             previous == null -> {
@@ -136,18 +121,6 @@ object TierDetector {
                 fix = "./gradlew installDebug",
             )
 
-            changedDeviceDriverSource(deviceFileHashes, previous.deviceFileHashes) != null -> Tier.Blocked(
-                reason = "a hardware device-driver class changed",
-                culprit = changedDeviceDriverSource(deviceFileHashes, previous.deviceFileHashes)!!,
-                fix = "./gradlew installDebug",
-                detail = "Classes annotated @I2cDeviceType / @MotorType / @ServoType / "
-                    + "@DigitalIoDeviceType / @AnalogSensorType / @DeviceProperties cannot be "
-                    + "hot-reloaded. The robot built its HardwareMap from these classes at "
-                    + "startup and never rebuilds it on a code-only reload, so a reloaded copy "
-                    + "is a different type and hardwareMap.get() would fail. "
-                    + "See docs/research/risks.md \u00a71.",
-            )
-
             else -> Tier.HotOrHardware(hardwareChangeSuspected = false)
         }
 
@@ -166,7 +139,6 @@ object TierDetector {
                     resFileHashes = fileHashes(resDirs),
                     assetFileHashes = fileHashes(assetDirs),
                     dependencyNotations = dependencyNotations,
-                    deviceFileHashes = deviceFileHashes,
                 ),
             )
         }
@@ -190,7 +162,6 @@ object TierDetector {
         assetDirs: List<File>,
         nativeLibDirs: List<File>,
         dependencyNotations: Set<String>,
-        sourceDirs: List<File>,
     ) {
         stateDir.mkdirs()
         val previousBuildId = loadState(File(stateDir, STATE_FILE_NAME))?.buildId ?: ""
@@ -209,7 +180,6 @@ object TierDetector {
                 resFileHashes = fileHashes(resDirs),
                 assetFileHashes = fileHashes(assetDirs),
                 dependencyNotations = dependencyNotations,
-                deviceFileHashes = deviceDriverSourceHashes(sourceDirs),
             ),
         )
     }
@@ -246,36 +216,7 @@ object TierDetector {
      * Over-inclusion here costs a user one unnecessary full install and a clear explanation;
      * under-inclusion costs them a silent ClassCastException on the robot. Easy trade.
      */
-    private fun deviceDriverSourceHashes(sourceDirs: List<File>): Map<String, String> {
-        val map = LinkedHashMap<String, String>()
-        for (dir in sourceDirs) {
-            if (!dir.exists()) continue
-            dir.walkTopDown()
-                .filter { it.isFile && (it.extension == "java" || it.extension == "kt") }
-                .forEach { f ->
-                    val text = try { f.readText() } catch (e: Exception) { return@forEach }
-                    if (DEVICE_ANNOTATIONS.any { text.contains(it) }) {
-                        map[f.path] = Hashing.sha256Hex(f)
-                    }
-                }
-        }
-        return map
-    }
 
-    private fun changedDeviceDriverSource(
-        current: Map<String, String>,
-        previous: Map<String, String>,
-    ): String? {
-        for ((path, hash) in current) {
-            if (previous[path] != hash) {
-                return if (previous.containsKey(path)) path else "$path (new device driver)"
-            }
-        }
-        for (path in previous.keys) {
-            if (!current.containsKey(path)) return "$path (removed)"
-        }
-        return null
-    }
 
     private fun diffDependencies(previous: Set<String>, current: Set<String>): String {
         val added = current - previous
@@ -298,7 +239,6 @@ object TierDetector {
         val resFileHashes: Map<String, String>,
         val assetFileHashes: Map<String, String>,
         val dependencyNotations: Set<String>,
-        val deviceFileHashes: Map<String, String> = emptyMap(),
     )
 
     private fun loadState(file: File): State? {
@@ -314,7 +254,6 @@ object TierDetector {
                 depsHash = props.getProperty("depsHash") ?: "",
                 resFileHashes = decodeMap(props.getProperty("resFileHashes")),
                 assetFileHashes = decodeMap(props.getProperty("assetFileHashes")),
-                deviceFileHashes = decodeMap(props.getProperty("deviceFileHashes")),
                 dependencyNotations = props.getProperty("dependencyNotations")
                     ?.split("")?.filter { it.isNotEmpty() }?.toSet() ?: emptySet(),
             )
@@ -333,7 +272,6 @@ object TierDetector {
         props.setProperty("depsHash", state.depsHash)
         props.setProperty("resFileHashes", encodeMap(state.resFileHashes))
         props.setProperty("assetFileHashes", encodeMap(state.assetFileHashes))
-        props.setProperty("deviceFileHashes", encodeMap(state.deviceFileHashes))
         props.setProperty("dependencyNotations", state.dependencyNotations.joinToString(""))
         file.outputStream().use { props.store(it, "Flux tier-detection state — do not edit by hand") }
     }

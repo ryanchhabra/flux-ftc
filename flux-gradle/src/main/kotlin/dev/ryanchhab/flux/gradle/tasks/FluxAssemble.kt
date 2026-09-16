@@ -152,10 +152,6 @@ abstract class FluxAssemble : DefaultTask() {
             nativeLibDirs = nativeLibDirs.files.toList(),
             dependencyNotations = dependencyNotations.get(),
             currentBuildId = buildId,
-            // Scanned for the six hardware device-driver annotations. A change to one of those
-            // classes cannot be hot-reloaded (docs/research/risks.md §1) and is blocked at build
-            // time rather than failing on the robot with a ClassCastException later.
-            sourceDirs = teamCodeSourceDirs.files.toList(),
         )
 
         val outcome = when (tier) {

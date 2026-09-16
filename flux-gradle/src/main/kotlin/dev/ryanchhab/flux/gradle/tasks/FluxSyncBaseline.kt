@@ -1,10 +1,14 @@
 package dev.ryanchhab.flux.gradle.tasks
 
+import dev.ryanchhab.flux.gradle.DeviceDriverGuard
 import dev.ryanchhab.flux.gradle.TierDetector
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.file.Directory
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.RegularFile
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
@@ -72,8 +76,19 @@ abstract class FluxSyncBaseline : DefaultTask() {
     @get:Input
     abstract val dependencyNotations: SetProperty<String>
 
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val classesDirs: ListProperty<Directory>
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val classesJars: ListProperty<RegularFile>
+
     @get:OutputDirectory
     abstract val tierStateDir: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val deviceStateDir: DirectoryProperty
 
     init {
         group = "flux"
@@ -91,7 +106,16 @@ abstract class FluxSyncBaseline : DefaultTask() {
             assetDirs = assetDirs.files.toList(),
             nativeLibDirs = nativeLibDirs.files.toList(),
             dependencyNotations = dependencyNotations.get(),
-            sourceDirs = teamCodeSourceDirs.files.toList(),
+        )
+        // A full install is the one moment the robot's HardwareMap and this build agree, so it is
+        // also when the device-driver baseline must advance. Without this, a team that adds a
+        // driver stays blocked forever: FluxDeviceGuard never advances its own state on a block.
+        DeviceDriverGuard.saveState(
+            stateDir = deviceStateDir.get().asFile,
+            classes = DeviceDriverGuard.scan(
+                classesDirs = classesDirs.getOrElse(emptyList()).map { it.asFile },
+                classesJars = classesJars.getOrElse(emptyList()).map { it.asFile },
+            ),
         )
         logger.lifecycle("Flux: baseline synced — the next fluxDeploy compares against this install.")
     }

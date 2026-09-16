@@ -6,6 +6,7 @@ import com.android.build.api.variant.AndroidComponentsExtension
 import com.android.build.api.variant.ScopedArtifacts
 import com.android.build.api.variant.Variant
 import dev.ryanchhab.flux.gradle.tasks.FluxAssemble
+import dev.ryanchhab.flux.gradle.tasks.FluxDeviceGuard
 import dev.ryanchhab.flux.gradle.tasks.FluxClearBundle
 import dev.ryanchhab.flux.gradle.tasks.FluxDeploy
 import dev.ryanchhab.flux.gradle.tasks.FluxDex
@@ -153,6 +154,7 @@ abstract class FluxPlugin @Inject constructor(
         val buildIdFileLoc = buildDir.file("flux/build-id.txt")
         val tierResultFileLoc = buildDir.file("flux/tier-result.properties")
         val tierStateDirLoc = buildDir.dir("flux/tierState")
+        val deviceStateDirLoc = buildDir.dir("flux/deviceState")
         val liveTuneResultFileLoc = buildDir.file("flux/live-tune-result.txt")
         val liveTuneStateDirLoc = buildDir.dir("flux/liveTuneState")
 
@@ -216,6 +218,7 @@ abstract class FluxPlugin @Inject constructor(
             nativeLibDirs.from(moduleDir.resolve("src/main/jniLibs"))
             dependencyNotations.set(dependencyNotationsProvider)
             tierStateDir.set(tierStateDirLoc)
+            deviceStateDir.set(deviceStateDirLoc)
         }
 
         // --- fluxClearBundle (CONTRACT.md Amendment 5) ---
@@ -261,6 +264,21 @@ abstract class FluxPlugin @Inject constructor(
         variant.artifacts.forScope(ScopedArtifacts.Scope.PROJECT)
             .use(fluxDex)
             .toGet(ScopedArtifact.CLASSES, FluxDex::classesJars, FluxDex::classesDirs)
+
+        // --- fluxDeviceGuard ---
+        // Runs between compilation and dexing: it needs real bytecode, which fluxAssemble cannot
+        // have (it generates a source file into that same compilation). See FluxDeviceGuard.
+        val fluxDeviceGuard = project.tasks.register<FluxDeviceGuard>("fluxDeviceGuard") {
+            deviceStateDir.set(deviceStateDirLoc)
+            onlyIf("Flux tier gate — skipped when blocked, unchanged, or live-tunable (tier 0/3/L)", tierGateSpec(tierResultFileLoc, liveTuneResultFileLoc))
+        }
+        variant.artifacts.forScope(ScopedArtifacts.Scope.PROJECT)
+            .use(fluxDeviceGuard)
+            .toGet(ScopedArtifact.CLASSES, FluxDeviceGuard::classesJars, FluxDeviceGuard::classesDirs)
+        variant.artifacts.forScope(ScopedArtifacts.Scope.PROJECT)
+            .use(fluxSyncBaseline)
+            .toGet(ScopedArtifact.CLASSES, FluxSyncBaseline::classesJars, FluxSyncBaseline::classesDirs)
+        fluxDex.configure { dependsOn(fluxDeviceGuard) }
 
         // --- fluxPush ---
         val fluxPush = project.tasks.register<FluxPush>("fluxPush") {
