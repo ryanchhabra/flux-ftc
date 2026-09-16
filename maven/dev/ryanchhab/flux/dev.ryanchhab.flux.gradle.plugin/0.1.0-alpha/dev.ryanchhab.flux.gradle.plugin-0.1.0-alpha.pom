@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>dev.ryanchhab.flux</groupId>
+  <artifactId>dev.ryanchhab.flux.gradle.plugin</artifactId>
+  <version>0.1.0-alpha</version>
+  <packaging>pom</packaging>
+  <name>FTC Flux Gradle Plugin</name>
+  <description>Compile, dex, push and hot-reload FTC TeamCode in well under a second.</description>
+  <url>https://github.com/ryanchhabra/ftc-flux</url>
+  <licenses>
+    <license>
+      <name>MIT License</name>
+      <url>https://opensource.org/licenses/MIT</url>
+    </license>
+  </licenses>
+  <developers>
+    <developer>
+      <id>ryanchhabra</id>
+      <name>Ryan Chhabra</name>
+    </developer>
+  </developers>
+  <dependencies>
+    <dependency>
+      <groupId>dev.ryanchhab</groupId>
+      <artifactId>flux-gradle</artifactId>
+      <version>0.1.0-alpha</version>
+    </dependency>
+  </dependencies>
+</project>

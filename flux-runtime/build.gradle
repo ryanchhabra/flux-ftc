@@ -87,6 +87,14 @@ publishing {
             }
         }
     }
-    // Only mavenLocal for now. A real remote (Maven Central / GitHub Packages) needs an account,
-    // signing keys, and a namespace we don't own yet -- see docs/design/distribution.md.
+    repositories {
+        // A plain folder repository committed to the repo and served over raw GitHub. Teams add
+        // one `maven { url ... }` line and then use normal coordinates and a normal plugins {}
+        // block. See docs/design/distribution.md for why not JitPack: it forces
+        // com.github.<user>.<repo> coordinates, which breaks the dev.ryanchhab.flux plugin marker.
+        maven {
+            name = 'repoFolder'
+            url = uri("$rootDir/../maven")
+        }
+    }
 }

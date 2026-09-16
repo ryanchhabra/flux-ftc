@@ -80,5 +80,11 @@ publishing {
             }
         }
     }
-    // mavenLocal only for now -- a remote needs an account and signing keys we don't have yet.
+    repositories {
+        // See flux-runtime/build.gradle for the rationale, and docs/design/distribution.md.
+        maven {
+            name = "repoFolder"
+            url = uri("$rootDir/../maven")
+        }
+    }
 }

@@ -14,6 +14,14 @@ out/
 *.class
 *.jar
 !gradle/wrapper/gradle-wrapper.jar
+
+# The published artifact folder IS committed -- it is how teams consume Flux until there is a
+# real remote (docs/design/distribution.md). Without these exceptions the *.jar rule above would
+# silently drop the very files teams need.
+!maven/**/*.jar
+!maven/**/*.aar
+!maven/**/*.pom
+!maven/**/*.module
 *.apk
 *.dex
 

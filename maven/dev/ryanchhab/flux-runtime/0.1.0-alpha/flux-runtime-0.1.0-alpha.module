@@ -1,0 +1,78 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "dev.ryanchhab",
+    "module": "flux-runtime",
+    "version": "0.1.0-alpha",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.4.0"
+    }
+  },
+  "variants": [
+    {
+      "name": "releaseVariantReleaseApiPublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "flux-runtime-0.1.0-alpha.aar",
+          "url": "flux-runtime-0.1.0-alpha.aar",
+          "size": 42272,
+          "sha512": "90bbac277a8af26a493b0897672633ec172289d6dc5e73ac7a06d160a7a5bc38dd52a96418506a13f592747f6b8bba034ab5644391c42a76964faa75cb976a61",
+          "sha256": "88a7b4f829e6fb547b222eb94feb6ad1cca54792409bd2cd2f9da91a767aa9e6",
+          "sha1": "8dcfbb1beda588585f09df3489ae5a45722da839",
+          "md5": "ca684d7cc8c17caf391eeb8716d6bf11"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseRuntimePublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "flux-runtime-0.1.0-alpha.aar",
+          "url": "flux-runtime-0.1.0-alpha.aar",
+          "size": 42272,
+          "sha512": "90bbac277a8af26a493b0897672633ec172289d6dc5e73ac7a06d160a7a5bc38dd52a96418506a13f592747f6b8bba034ab5644391c42a76964faa75cb976a61",
+          "sha256": "88a7b4f829e6fb547b222eb94feb6ad1cca54792409bd2cd2f9da91a767aa9e6",
+          "sha1": "8dcfbb1beda588585f09df3489ae5a45722da839",
+          "md5": "ca684d7cc8c17caf391eeb8716d6bf11"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseSourcePublication",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "flux-runtime-0.1.0-alpha-sources.jar",
+          "url": "flux-runtime-0.1.0-alpha-sources.jar",
+          "size": 47507,
+          "sha512": "cc05ea0dcb2acd7438339350b42c7074cacd43d2542a910e8de2a545ed85a7acc0d5ea097b86ac37cf48f343b4987820e176e595f63dc2e27636e3dd00ae6ab0",
+          "sha256": "3e1a6f4c84b26dc306fd0bf4e9c614439535e361e9e14feae3d9206d2fd54904",
+          "sha1": "eca23fe8ebd86659f1bf91175b264d867460a94b",
+          "md5": "d3e4413f00dd8395910fc55d858fa1b0"
+        }
+      ]
+    }
+  ]
+}
