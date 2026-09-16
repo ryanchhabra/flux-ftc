@@ -1,3 +1,199 @@
-# FTC Flux
+# Flux
 
-Hot code reload for FIRST Tech Challenge robots.
+Hot code reload for FIRST Tech Challenge robots. Change your TeamCode, run one command, and the new
+code is running on the robot without reinstalling the Robot Controller app.
+
+A normal Android Studio deploy rebuilds and reinstalls the whole APK, which takes roughly 40 to 90
+seconds depending on the machine. Flux compiles only TeamCode, sends a small DEX file over ADB, and
+swaps the classes in the running app.
+
+Measured on an Android API 25 emulator, which matches the REV Control Hub's Android version:
+
+```
+Compile           56 ms
+Generate           2 ms
+Dex              143 ms (cached: 397/399)
+Transfer          49 ms (145.0 KB)
+Reload           198 ms
+---------------------------
+Total            448 ms
+```
+
+## What it does
+
+- Reloads changed TeamCode without an APK install.
+- Adds, renames and deletes OpModes. New classes that were never in the installed APK work.
+- Supports Java and Kotlin TeamCode.
+- Changes `@FluxLive` constants in a running OpMode without restarting it, in about 200 ms.
+- Refuses changes that cannot be hot reloaded, and names the file responsible, instead of
+  deploying something that will fail later on the robot.
+- Keeps hot loaded code across a Robot Controller restart or power cycle.
+- Rolls back to the last working build if a deploy fails, rather than leaving the robot in an
+  unknown state.
+
+## Requirements
+
+- JDK 17. Newer JDKs fail the FTC build with `Unsupported class file major version`.
+- FTC SDK 12.0.0. Other versions are untested.
+- Android Studio, and a device reachable over ADB.
+
+## Installation
+
+Add the Flux repository in two places. Plugin resolution and dependency resolution read different
+blocks, so both are required.
+
+`settings.gradle`:
+
+```groovy
+pluginManagement {
+    repositories {
+        maven { url 'https://raw.githubusercontent.com/ryanchhabra/flux-ftc/main/maven' }
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+```
+
+`build.gradle` in the project root:
+
+```groovy
+allprojects {
+    repositories {
+        maven { url 'https://raw.githubusercontent.com/ryanchhabra/flux-ftc/main/maven' }
+        mavenCentral()
+        google()
+    }
+}
+```
+
+`TeamCode/build.gradle`:
+
+```groovy
+plugins {
+    id 'com.android.application'
+    id 'dev.ryanchhab.flux' version '0.1.0-alpha'
+}
+
+dependencies {
+    implementation 'dev.ryanchhab:flux-runtime:0.1.0-alpha'
+}
+```
+
+## Usage
+
+Install the app normally once. This is what puts the Flux runtime on the robot.
+
+```bash
+./gradlew installDebug
+```
+
+After that, use Flux:
+
+```bash
+./gradlew fluxDeploy
+```
+
+Re-initialize the OpMode on the Driver Station to pick up the new code.
+
+If something is wrong, run:
+
+```bash
+./gradlew fluxDoctor
+```
+
+It checks that ADB is reachable, a device is connected, the Robot Controller app is installed, the
+Flux runtime is running, the runtime and plugin versions match, and the FTC SDK version is supported.
+
+## Live tuning
+
+Mark a class of constants:
+
+```java
+import dev.ryanchhab.flux.runtime.FluxLive;
+
+@FluxLive
+public class DriveConstants {
+    public static volatile double kP = 0.012;
+    public static volatile int targetRpm = 4700;
+}
+```
+
+Changing one of these values and deploying sets the field in the running OpMode without restarting
+it. `final` fields cannot be live tuned, because the compiler inlines their values at every call
+site. Flux warns when it sees one.
+
+`./gradlew fluxRead` reports the values the robot currently holds, next to the values in your source,
+and marks any that differ.
+
+## Android Studio plugin
+
+The plugin adds a Flux tool window with device status, a deploy button with per stage timings, and a
+live tuning panel that edits `@FluxLive` constants. Editing a value sends it to the robot and writes
+it back into your source file, so the file stays the source of truth.
+
+It is not on the JetBrains Marketplace yet. Build and install it from disk:
+
+```bash
+cd flux-idea
+gradle buildPlugin
+```
+
+Then in Android Studio: Settings, Plugins, the gear icon, Install Plugin from Disk, and select
+`flux-idea/build/distributions/flux-idea-0.1.0-alpha.zip`.
+
+## What cannot be hot reloaded
+
+These require a normal `installDebug`. Flux detects them and refuses the deploy rather than failing
+on the robot:
+
+| Change | Reason |
+|---|---|
+| Hardware device drivers (`@I2cDeviceType`, `@MotorType`, `@ServoType`, `@DigitalIoDeviceType`, `@AnalogSensorType`, `@DeviceProperties`) | The robot built its HardwareMap from these classes at startup and does not rebuild it on a code only reload |
+| AndroidManifest changes | The manifest is read at install time |
+| Android resources and assets | Resource IDs are compiled into the installed APK |
+| Native libraries | A `.so` cannot be unloaded and reloaded in a running process |
+| Gradle dependency changes | New code has to be in the APK |
+| FTC SDK version changes | The SDK is the environment the reload mechanism runs inside |
+
+## Status
+
+Version 0.1.0-alpha. Verified on an Android API 25 emulator, which matches the Control Hub's Android
+7.1.1, same API level and CPU architecture. Not yet verified on physical hardware. Two behaviours
+cannot be tested without a robot: whether the Driver Station refreshes its OpMode list without a
+restart, and what happens if a reload is attempted while motors are running.
+
+Treat it as usable for development, not for competition, until it has run on a real Control Hub.
+
+## How it works
+
+The FTC SDK already loads code that was not in the APK, because that is how OnBot Java works. Flux
+uses the same mechanism from Android Studio. It hands the SDK its own classloader over a DEX file
+pushed with ADB, then asks the SDK to rescan. You never open OnBot Java and nothing is sent to it.
+
+`docs/HOW-FLUX-WORKS.md` explains this from the beginning, including classloaders and DEX, and
+assumes no prior knowledge of either.
+
+## Prior art
+
+Flux builds on two existing projects, documented in `docs/research/`:
+
+- [Sloth](https://github.com/Dairy-Foundation/Sloth) by Dairy Foundation. Flux uses its
+  root classloader design, which is what allows brand new classes to load.
+- [fast-load](https://github.com/MatthewOates36/fast-load) by Matthew Oates. Flux uses its approach
+  of driving the SDK through the public `setOnBotJavaClassHelper` hook, which needs one private
+  field reflection rather than around twelve.
+
+## Documentation
+
+| File | Contents |
+|---|---|
+| `docs/GETTING-STARTED.md` | Full setup and troubleshooting |
+| `docs/HOW-FLUX-WORKS.md` | How hot reloading works, from the beginning |
+| `docs/design/architecture.md` | Design and rationale |
+| `docs/design/CONTRACT.md` | Names, paths, wire formats |
+| `docs/research/` | Prior art, platform research, risk analysis |
+
+## License
+
+MIT. See `LICENSE`.
