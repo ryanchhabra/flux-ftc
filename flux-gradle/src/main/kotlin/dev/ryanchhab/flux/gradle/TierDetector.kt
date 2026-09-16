@@ -22,6 +22,27 @@ object TierDetector {
 
     private const val STATE_FILE_NAME = "tier-state.properties"
 
+    /**
+     * Bumped whenever the MEANING of a recorded field changes, not merely its value.
+     *
+     * Without this, upgrading Flux silently produced a nonsense block. When dependency recording
+     * moved from requested notations to resolved components, every existing baseline suddenly
+     * "differed", and the deploy was refused with a diff claiming a pile of androidx artifacts had
+     * been removed. Nothing had been removed: the two formats simply are not comparable, since the
+     * requested set carries pre-conflict-resolution duplicates the resolved set does not.
+     *
+     * A stale baseline still has to block, because upgrading Flux changes flux-runtime inside the
+     * APK and that genuinely needs a full install. What it must not do is invent a reason.
+     */
+    private const val STATE_FORMAT = 2
+
+    /** What was on disk: nothing, something this Flux cannot interpret, or a usable baseline. */
+    private sealed interface Loaded {
+        object None : Loaded
+        object StaleFormat : Loaded
+        data class Ok(val state: State) : Loaded
+    }
+
     sealed class Tier {
         /** Nothing changed since the last recorded deploy. Skip everything. */
         data class NoOp(val buildId: String) : Tier()
@@ -64,7 +85,8 @@ object TierDetector {
     ): Tier {
         stateDir.mkdirs()
         val stateFile = File(stateDir, STATE_FILE_NAME)
-        val previous = loadState(stateFile)
+        val loaded = loadState(stateFile)
+        val previous = (loaded as? Loaded.Ok)?.state
 
         val manifestHash = if (manifestFile.isFile) Hashing.sha256Hex(manifestFile) else "absent"
         val resHash = resDirs.joinToString("|") { Hashing.sha256OfTree(it) }
@@ -73,6 +95,17 @@ object TierDetector {
         val depsHash = Hashing.sha256Hex(dependencyNotations.sorted().joinToString("\n").toByteArray())
 
         val result = when {
+            loaded is Loaded.StaleFormat -> Tier.Blocked(
+                reason = "Flux was upgraded since the last install",
+                culprit = "this project's recorded baseline was written by a different version of Flux",
+                fix = "./gradlew installDebug",
+                detail = "Flux records a fingerprint of the module at every install and compares "
+                    + "the next deploy against it. This version of Flux records that fingerprint "
+                    + "differently, so the stored one cannot be compared and Flux will not guess. "
+                    + "A full install is needed after a Flux upgrade anyway, because flux-runtime "
+                    + "itself ships inside the APK. This happens once per upgrade.",
+            )
+
             previous == null -> {
                 // First deploy Flux has ever seen for this module: nothing to compare against.
                 // Treat as hot rather than blocked so first-run ease-of-use isn't punished, but
@@ -164,7 +197,7 @@ object TierDetector {
         dependencyNotations: Set<String>,
     ) {
         stateDir.mkdirs()
-        val previousBuildId = loadState(File(stateDir, STATE_FILE_NAME))?.buildId ?: ""
+        val previousBuildId = (loadState(File(stateDir, STATE_FILE_NAME)) as? Loaded.Ok)?.state?.buildId ?: ""
         saveState(
             File(stateDir, STATE_FILE_NAME),
             State(
@@ -241,12 +274,17 @@ object TierDetector {
         val dependencyNotations: Set<String>,
     )
 
-    private fun loadState(file: File): State? {
-        if (!file.isFile) return null
+    private fun loadState(file: File): Loaded {
+        if (!file.isFile) return Loaded.None
         return try {
             val props = Properties().apply { file.inputStream().use { load(it) } }
-            State(
-                buildId = props.getProperty("buildId") ?: return null,
+            // Written by a different Flux: the values are not comparable with today's, so report
+            // that plainly instead of diffing two incompatible encodings against each other.
+            if ((props.getProperty("stateFormat")?.toIntOrNull() ?: 1) != STATE_FORMAT) {
+                return Loaded.StaleFormat
+            }
+            Loaded.Ok(State(
+                buildId = props.getProperty("buildId") ?: return Loaded.None,
                 manifestHash = props.getProperty("manifestHash") ?: "",
                 resHash = props.getProperty("resHash") ?: "",
                 assetsHash = props.getProperty("assetsHash") ?: "",
@@ -256,14 +294,16 @@ object TierDetector {
                 assetFileHashes = decodeMap(props.getProperty("assetFileHashes")),
                 dependencyNotations = props.getProperty("dependencyNotations")
                     ?.split("")?.filter { it.isNotEmpty() }?.toSet() ?: emptySet(),
-            )
+            ))
         } catch (e: Exception) {
-            null // Corrupt/foreign state file: treat as "no history" rather than crash the build.
+            // Corrupt/foreign state file: treat as "no history" rather than crash the build.
+            Loaded.None
         }
     }
 
     private fun saveState(file: File, state: State) {
         val props = Properties()
+        props.setProperty("stateFormat", STATE_FORMAT.toString())
         props.setProperty("buildId", state.buildId)
         props.setProperty("manifestHash", state.manifestHash)
         props.setProperty("resHash", state.resHash)
