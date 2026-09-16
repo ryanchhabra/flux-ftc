@@ -41,6 +41,14 @@ public final class FluxLiveTuneReceiver extends BroadcastReceiver {
             return;
         }
         FluxLiveTuneReceiver receiver = new FluxLiveTuneReceiver();
+        // Registered on the Context handed to @OnCreate, NOT on the application context, and
+        // unregistered the same way. That asymmetry with @OnDestroy's Context is deliberate and
+        // was measured: the SDK calls @OnDestroy shortly after startup with a different Context,
+        // so unregisterReceiver throws and the receiver stays live -- which is what keeps Flux
+        // reachable for the rest of the session. Switching both sides to getApplicationContext()
+        // makes the unregister succeed, the receiver really goes away, and every later
+        // fluxDeploy fails with "no result code from the robot". Verified on the emulator by
+        // doing exactly that and watching reload and PING both stop answering.
         context.registerReceiver(receiver, new IntentFilter(ACTION_LIVE_TUNE));
         registeredInstance = receiver;
         RobotLog.ii(TAG, "FLUX: live-tune receiver registered for action %s", ACTION_LIVE_TUNE);
@@ -54,11 +62,18 @@ public final class FluxLiveTuneReceiver extends BroadcastReceiver {
         }
         try {
             context.unregisterReceiver(receiver);
+            registeredInstance = null;
+            RobotLog.ii(TAG, "FLUX: live-tune receiver unregistered");
         } catch (IllegalArgumentException alreadyUnregistered) {
-            RobotLog.ww(TAG, "FLUX: live-tune receiver was already unregistered");
+            // Logged instead of the success line, not in addition to it -- printing both said
+            // "was already unregistered" and "unregistered" back to back on every shutdown,
+            // which reads like a contradiction in a log a team is scanning for real problems.
+            // Deliberately leaves registeredInstance set: the throw means this Context never had
+            // the receiver, so the one registered in @OnCreate is still live and still serving
+            // reloads. Nulling it here would let the next @OnCreate register a second receiver on
+            // top of the first, so one broadcast would run the reload twice.
+            RobotLog.ww(TAG, "FLUX: live-tune receiver is still registered on another Context, leaving it in place");
         }
-        registeredInstance = null;
-        RobotLog.ii(TAG, "FLUX: live-tune receiver unregistered");
     }
 
     @Override

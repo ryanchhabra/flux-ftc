@@ -63,7 +63,12 @@ public final class FluxPingReceiver {
                 RobotLog.ii(TAG, "FLUX: ping answered, runtime version %s", FluxVersion.VERSION);
             }
         };
-        context.getApplicationContext().registerReceiver(receiver, new IntentFilter(ACTION_PING));
+        // Same Context on both sides as the other Flux receivers, and deliberately NOT the
+        // application context -- see FluxReloadReceiver.onCreate for the measurement. With
+        // getApplicationContext() here the SDK's early @OnDestroy really does unregister this
+        // receiver, and PING then stops answering for the rest of the session, which makes
+        // fluxDoctor report the runtime as missing on a perfectly good install.
+        context.registerReceiver(receiver, new IntentFilter(ACTION_PING));
         registeredInstance = receiver;
         RobotLog.ii(TAG, "FLUX: ping receiver registered for action %s", ACTION_PING);
     }
@@ -75,10 +80,12 @@ public final class FluxPingReceiver {
             return;
         }
         try {
-            context.getApplicationContext().unregisterReceiver(registeredInstance);
+            context.unregisterReceiver(registeredInstance);
+            registeredInstance = null;
         } catch (IllegalArgumentException alreadyGone) {
-            // Already unregistered; nothing to do and nothing worth alarming anyone about.
+            // This Context never had the receiver, so the one from @OnCreate is still live and
+            // still answering. Leaving registeredInstance set stops the next @OnCreate stacking a
+            // second receiver on top of it.
         }
-        registeredInstance = null;
     }
 }
