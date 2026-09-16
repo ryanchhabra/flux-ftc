@@ -96,7 +96,7 @@ abstract class FluxDoctor : DefaultTask() {
                 "device connected",
                 deviceConnected,
                 if (deviceConnected) "${deviceLines.size} device(s), at least one authorized" else "no authorized device (raw: ${devices.trim()})",
-                "connect via USB or `adb connect ${'$'}{flux.robotAddress}`, and accept the RSA authorization prompt on the device",
+                "connect via USB, or `adb connect <robot address>` for a Control Hub over wifi (the address you set in the flux { } block), then accept the RSA authorization prompt on the device",
             )
 
             if (deviceConnected) {
