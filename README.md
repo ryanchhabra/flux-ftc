@@ -34,7 +34,7 @@ Total            448 ms
 ## Requirements
 
 - JDK 17. Newer JDKs fail the FTC build with `Unsupported class file major version`.
-- FTC SDK 12.0.0. Other versions are untested.
+- FTC SDK 8.1.0 or newer. Developed against 12.0.0. See [Supported FTC SDK versions](#supported-ftc-sdk-versions).
 - Android Studio, and a device reachable over ADB.
 
 ## Installation
@@ -104,6 +104,23 @@ If something is wrong, run:
 
 It checks that ADB is reachable, a device is connected, the Robot Controller app is installed, the
 Flux runtime is running, the runtime and plugin versions match, and the FTC SDK version is supported.
+Each check reports `[PASS]`, `[WARN]` or `[FAIL]`. A `[WARN]` marks something Flux cannot fully
+vouch for and does not mean anything is broken. Only `[FAIL]` needs action, and each one names a fix.
+
+## Supported FTC SDK versions
+
+Flux is developed and tested against FTC SDK 12.0.0, and works on 8.1.0 and newer.
+
+That floor is measured, not assumed. The Flux runtime uses a fixed set of SDK members, and those
+members have identical signatures in every RobotCore and FtcCommon release from 8.1.0 through
+12.0.0. Releases older than 8.1.0 are missing `ClassManager.processAllClassesCalled`. Without that
+field Flux cannot reset the SDK's one shot class scan guard, so only the first reload of a session
+would take effect and every later one would silently do nothing. `fluxDoctor` fails those versions
+outright rather than letting a team find out on the field.
+
+On 8.1.0 through 11.2.1, `fluxDoctor` reports `[WARN]`: Flux should work, but those versions are not
+part of its routine testing. If something misbehaves there, please report it, with the `fluxDoctor`
+output and `adb logcat -s FLUX`.
 
 ## Live tuning
 
