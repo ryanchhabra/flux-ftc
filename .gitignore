@@ -3,6 +3,10 @@
 # test-ftc-project/fixtures/, which IS committed.
 test-ftc-project/sdk/
 
+# Second clone of the same FIRST repo, wired the way a real team would consume Flux (coordinates
+# + mavenLocal, no composite build) -- see test-ftc-project/README.md.
+test-ftc-project/consumer/
+
 # --- Build output -------------------------------------------------------------------------
 build/
 out/

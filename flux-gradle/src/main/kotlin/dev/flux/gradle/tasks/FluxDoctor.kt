@@ -49,6 +49,13 @@ abstract class FluxDoctor : DefaultTask() {
 
     companion object {
         const val SUPPORTED_SDK_VERSION = "12.0.0"
+
+        /**
+         * This plugin's version, compared against what the on-robot runtime reports over
+         * dev.flux.PING. Must track flux-gradle/build.gradle.kts's `version` and
+         * dev.flux.runtime.FluxVersion.VERSION -- all three are one release.
+         */
+        const val FLUX_VERSION = "0.1.0-alpha"
         private val ROBOT_CONTROLLER_PACKAGE_HINTS = listOf("ftcrobotcontroller", "qualcomm")
     }
 
@@ -97,14 +104,42 @@ abstract class FluxDoctor : DefaultTask() {
                     "run ./gradlew installDebug from the FtcRobotController app module",
                 )
 
-                if (rcPackage != null) {
-                    val dump = capture(adb, "shell", "dumpsys", "package", rcPackage)
-                    val runtimePresent = dump.contains("dev.flux.RELOAD")
+                // Ask the runtime directly instead of inspecting the APK.
+                //
+                // This check used to grep `dumpsys package` for a dev.flux.RELOAD receiver, which
+                // was a structural FALSE NEGATIVE: dumpsys lists only manifest-declared receivers,
+                // and every Flux receiver is registered dynamically from an @OnCreate hook. It
+                // therefore reported FAIL on every install, including verified-working ones. A
+                // diagnostic tool that always fails is worse than no diagnostic at all.
+                //
+                // A ping is both simpler and strictly more informative: a reply proves the runtime
+                // is running and listening (not merely bundled), and carries its version so skew
+                // between the installed runtime and this plugin can be reported precisely.
+                val ping = capture(adb, "shell", "am", "broadcast", "-a", "dev.flux.PING")
+                val answered = Regex("""result=1""").containsMatchIn(ping)
+                val runtimeVersion = Regex("""data="([^"]*)"""").find(ping)?.groupValues?.get(1)
+
+                check(
+                    "Flux runtime installed and running",
+                    answered,
+                    if (answered) "runtime answered dev.flux.PING (version ${runtimeVersion ?: "unknown"})"
+                    else "no reply to dev.flux.PING -- runtime not installed, or the Robot Controller app isn't running",
+                    "add the flux-runtime dependency to the RC app module, reinstall with " +
+                        "./gradlew installDebug, and make sure the Robot Controller app is open",
+                )
+
+                // Version skew is the failure a preview team is most likely to hit and least likely
+                // to diagnose: the runtime only changes on a full install, while the plugin changes
+                // whenever they edit their build file. The two speak one wire protocol.
+                if (answered && runtimeVersion != null) {
+                    val pluginVersion = FLUX_VERSION
+                    val matches = runtimeVersion == pluginVersion
                     check(
-                        "Flux runtime present in installed APK",
-                        runtimePresent,
-                        if (runtimePresent) "receiver registered for dev.flux.RELOAD" else "no receiver registered for dev.flux.RELOAD",
-                        "add the flux-runtime dependency to the RC app module and reinstall with ./gradlew installDebug",
+                        "Runtime and plugin versions match",
+                        matches,
+                        if (matches) "both $pluginVersion"
+                        else "runtime $runtimeVersion, plugin $pluginVersion",
+                        "run ./gradlew installDebug to bring the on-robot runtime up to $pluginVersion",
                     )
                 }
             }
