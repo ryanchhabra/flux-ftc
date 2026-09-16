@@ -165,35 +165,3 @@ restart, and what happens if a reload is attempted while motors are running.
 
 Treat it as usable for development, not for competition, until it has run on a real Control Hub.
 
-## How it works
-
-The FTC SDK already loads code that was not in the APK, because that is how OnBot Java works. Flux
-uses the same mechanism from Android Studio. It hands the SDK its own classloader over a DEX file
-pushed with ADB, then asks the SDK to rescan. You never open OnBot Java and nothing is sent to it.
-
-`docs/HOW-FLUX-WORKS.md` explains this from the beginning, including classloaders and DEX, and
-assumes no prior knowledge of either.
-
-## Prior art
-
-Flux builds on two existing projects, documented in `docs/research/`:
-
-- [Sloth](https://github.com/Dairy-Foundation/Sloth) by Dairy Foundation. Flux uses its
-  root classloader design, which is what allows brand new classes to load.
-- [fast-load](https://github.com/MatthewOates36/fast-load) by Matthew Oates. Flux uses its approach
-  of driving the SDK through the public `setOnBotJavaClassHelper` hook, which needs one private
-  field reflection rather than around twelve.
-
-## Documentation
-
-| File | Contents |
-|---|---|
-| `docs/GETTING-STARTED.md` | Full setup and troubleshooting |
-| `docs/HOW-FLUX-WORKS.md` | How hot reloading works, from the beginning |
-| `docs/design/architecture.md` | Design and rationale |
-| `docs/design/CONTRACT.md` | Names, paths, wire formats |
-| `docs/research/` | Prior art, platform research, risk analysis |
-
-## License
-
-MIT. See `LICENSE`.

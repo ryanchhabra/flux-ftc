@@ -38,3 +38,6 @@ local.properties
 # --- OS -----------------------------------------------------------------------------------
 .DS_Store
 Thumbs.db
+
+# Internal design/research notes. Kept locally, deliberately not published.
+docs/
