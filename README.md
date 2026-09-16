@@ -226,10 +226,4 @@ on the robot:
 
 ## Status
 
-Version 0.1.0-alpha. Verified on an Android API 25 emulator, which matches the Control Hub's Android
-7.1.1, same API level and CPU architecture. Not yet verified on physical hardware. Two behaviours
-cannot be tested without a robot: whether the Driver Station refreshes its OpMode list without a
-restart, and what happens if a reload is attempted while motors are running.
-
-Treat it as usable for development, not for competition, until it has run on a real Control Hub.
-
+Version 0.1.0-alpha.
