@@ -38,6 +38,17 @@ class FluxService(private val project: Project) {
     var isDeploying: Boolean = false
         private set
 
+    /**
+     * Every `@FluxLive` field's value as of the last successful `fluxDeploy`, i.e. "the last
+     * hot-loaded values" -- what Live Tuning's Reset button restores to. `fluxDeploy` is what
+     * actually pushes source to the robot, so this is scanned fresh from source right after a
+     * SUCCESS result, not carried over from whatever the Live Tuning panel happened to have
+     * loaded. In-memory only for this IDE session -- no persistence, per the brief.
+     */
+    @Volatile
+    var lastDeploySnapshot: List<FluxLiveSourceScanner.ScannedField>? = null
+        private set
+
     fun addListener(listener: FluxListener) {
         listeners += listener
     }
@@ -75,6 +86,13 @@ class FluxService(private val project: Project) {
             onFinished = { fullOutput, exitCode ->
                 val result = DeployOutputParser.parse(fullOutput, exitCode)
                 lastResult = result
+                if (result.outcome == DeployOutcome.SUCCESS) {
+                    // Called on the process's own (non-EDT) thread -- safe to scan the filesystem
+                    // here directly, no need to hop to a pooled thread first.
+                    GradleProjectLocator.resolve(project)?.let { gradleDir ->
+                        lastDeploySnapshot = FluxLiveSourceScanner.scan(gradleDir)
+                    }
+                }
                 isDeploying = false
                 FluxDeployRunner.onEdt { listeners.forEach { it.onDeployResult(result) } }
             },
