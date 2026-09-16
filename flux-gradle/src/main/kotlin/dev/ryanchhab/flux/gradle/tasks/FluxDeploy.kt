@@ -53,9 +53,6 @@ abstract class FluxDeploy : DefaultTask() {
     @get:Input
     abstract val tierNoOp: Property<Boolean>
 
-    @get:Input
-    @get:Optional
-    abstract val hardwareChangeSuspected: Property<Boolean>
 
     @get:Input
     @get:Optional
@@ -104,11 +101,8 @@ abstract class FluxDeploy : DefaultTask() {
         }
 
         val isLiveTune = liveTuneEligible.getOrElse(false)
-        val tierLabel = when {
-            isLiveTune -> "tier L · live"
-            hardwareChangeSuspected.getOrElse(false) -> "tier 2 · hardware"
-            else -> "tier 1 · hot"
-        }
+        val tierLabel = if (isLiveTune) "tier L · live" else "tier 1 · hot"
+
         val snapshot = timingService.orNull?.snapshot() ?: emptyMap()
 
         val header = "FTC Flux  ●  ${robotAddress.getOrElse("?")}  ·  $tierLabel"

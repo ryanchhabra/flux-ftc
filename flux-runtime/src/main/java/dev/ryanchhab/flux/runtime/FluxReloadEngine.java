@@ -44,6 +44,15 @@ final class FluxReloadEngine {
     private static final String TAG = "FLUX";
 
     /** CONTRACT.md result codes. */
+    /**
+     * How long safetyPolicy=FORCE waits for a stop before giving up and refusing.
+     *
+     * <p>Small on purpose. This runs on the broadcast receiver's thread, so a long wait freezes
+     * the Robot Controller UI; and an OpMode that has not stopped in this long is probably stuck
+     * in its own loop, which is exactly when forcing a class swap is the worst idea.
+     */
+    private static final long FORCE_STOP_TIMEOUT_MS = 2000;
+
     static final int RESULT_SUCCESS = 1;
     static final int RESULT_FAILED_CLEAN = 2;
     static final int RESULT_FAILED_DIRTY = 3;
@@ -98,7 +107,15 @@ final class FluxReloadEngine {
      *                       CONTRACT.md's "Mismatch or CNFE ⇒ result code 3" describes.
      * @return one of {@link #RESULT_SUCCESS}, {@link #RESULT_FAILED_CLEAN}, {@link #RESULT_FAILED_DIRTY}.
      */
-    static int reload(Context context, String expectedBuildId) {
+    static int reload(Context context, String expectedBuildId, String safetyPolicy) {
+        // Enforced BEFORE anything is touched, so a refusal leaves the robot exactly as it was.
+        // FAILED_CLEAN is the honest code for it: the reload did not happen and the previously
+        // running code is still running, which is precisely what that code means.
+        int refusal = enforceSafetyPolicy(safetyPolicy);
+        if (refusal != RESULT_SUCCESS) {
+            return refusal;
+        }
+
         int result = doReload(context, expectedBuildId, BUNDLE_FILE);
 
         if (result == RESULT_SUCCESS) {
@@ -165,6 +182,43 @@ final class FluxReloadEngine {
      *
      * @return one of {@link #RESULT_SUCCESS}, {@link #RESULT_FAILED_CLEAN}, {@link #RESULT_FAILED_DIRTY}.
      */
+    /**
+     * Applies {@code flux { safetyPolicy = ... }}. Returns {@link #RESULT_SUCCESS} to mean
+     * "carry on", or {@link #RESULT_FAILED_CLEAN} to refuse.
+     *
+     * <p>Hot-swapping TeamCode classes while an OpMode holds instances of them is unsound: the
+     * running OpMode keeps its old classes, but anything it constructs afterwards comes from the
+     * new generation, and the two are different types with the same names. On a robot that is
+     * driving, that is a physical safety question, not just a correctness one.
+     *
+     * <p>An unknown or absent policy is treated as REJECT. Failing safe matters more here than
+     * being permissive about a typo, and the Gradle side validates the value anyway.
+     */
+    private static int enforceSafetyPolicy(String safetyPolicy) {
+        FluxSafetyDecision.Decision decision =
+                FluxSafetyDecision.decide(safetyPolicy, FluxOpModeGuard.isOpModeActive());
+
+        if (decision == FluxSafetyDecision.Decision.PROCEED) {
+            return RESULT_SUCCESS;
+        }
+
+        String active = FluxOpModeGuard.activeOpModeName();
+
+        if (decision == FluxSafetyDecision.Decision.STOP_THEN_PROCEED) {
+            if (FluxOpModeGuard.requestStopAndWait(FORCE_STOP_TIMEOUT_MS)) {
+                RobotLog.ii(TAG, "FLUX: OpMode '%s' stopped, continuing with the reload", active);
+                return RESULT_SUCCESS;
+            }
+            RobotLog.ee(TAG, "FLUX: OpMode '%s' did not stop within %d ms - refusing the reload",
+                    active, FORCE_STOP_TIMEOUT_MS);
+            return RESULT_FAILED_CLEAN;
+        }
+
+        RobotLog.ww(TAG, "FLUX: refusing to reload while OpMode '%s' is active "
+                + "(safetyPolicy=REJECT). Stop the OpMode and deploy again.", active);
+        return RESULT_FAILED_CLEAN;
+    }
+
     private static int doReload(Context context, String expectedBuildId, File bundleFile) {
         RobotLog.ii(TAG, "FLUX: reload requested, bundle=%s", bundleFile.getPath());
 

@@ -39,7 +39,10 @@ abstract class FluxExtension @Inject constructor(objects: ObjectFactory) {
     val autoConnect: Property<AutoConnect> = objects.property(AutoConnect::class.java)
         .convention(AutoConnect.MAINTAIN)
 
-    /** What happens when a deploy is requested while an OpMode is running. */
+    /**
+     * What happens when a deploy is requested while an OpMode is running. Sent to the robot with
+     * every reload; see [SafetyPolicy].
+     */
     val safetyPolicy: Property<SafetyPolicy> = objects.property(SafetyPolicy::class.java)
         .convention(SafetyPolicy.REJECT)
 
@@ -65,17 +68,31 @@ enum class AutoConnect {
 }
 
 /**
- * architecture.md §6 — reload is refused or deferred while an OpMode is live. `REJECT` is called
- * out there as "safest; PoC default", which is the default here. `DEFER` and `FORCE` need the
- * runtime-side staging support that `flux-runtime` provides.
+ * What a reload does when an OpMode is running on the robot.
+ *
+ * Hot-swapping TeamCode classes out from under a running OpMode is unsound: the OpMode keeps the
+ * classes it already loaded, while anything constructed afterwards comes from the new generation,
+ * and those are different types sharing a name. On a robot that is driving, that is a physical
+ * safety question.
+ *
+ * There used to be a third value, `DEFER` ("stage the bundle and apply it when the OpMode stops").
+ * It is gone rather than kept as a placeholder. Nothing implemented it, so setting it behaved
+ * exactly like every other value, and an inert safety setting is worse than an absent one. It also
+ * cannot be added without changing the wire protocol, since "staged, not yet applied" is a fourth
+ * outcome that the three result codes cannot express. If it comes back, it comes back with the
+ * runtime support and a result code of its own.
  */
 enum class SafetyPolicy {
-    /** Refuse the deploy outright if an OpMode is running. */
+    /**
+     * Refuse the deploy if an OpMode is active. The default, and the only safe choice for a robot
+     * that might be on the field. Reports FAILED_CLEAN: nothing was touched, the robot is still
+     * running the code it was running.
+     */
     REJECT,
 
-    /** Stage the bundle and apply it once the running OpMode stops. */
-    DEFER,
-
-    /** Request the OpMode stop, wait for it to stop, then reload. */
+    /**
+     * Ask the running OpMode to stop, wait briefly, then reload. Stops the robot, so it is opt-in.
+     * If the OpMode does not stop in time the reload is refused rather than forced.
+     */
     FORCE,
 }

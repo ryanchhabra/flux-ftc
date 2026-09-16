@@ -138,7 +138,11 @@ public final class FluxStartupLoader {
                 + "resumes on the last hot-loaded generation instead of reverting to the "
                 + "installed APK", BUNDLE_FILE.getPath());
 
-        int result = FluxReloadEngine.reload(context.getApplicationContext(), null);
+        // Null policy means REJECT, the safe default. That is correct here rather than a
+        // special case: this runs at @OnCreateEventLoop, before any OpMode can be selected, so
+        // the check passes through. Deliberately NOT given a bypass -- if an OpMode somehow were
+        // active at startup, refusing would still be the right answer.
+        int result = FluxReloadEngine.reload(context.getApplicationContext(), null, null);
 
         switch (result) {
             case FluxReloadEngine.RESULT_SUCCESS:

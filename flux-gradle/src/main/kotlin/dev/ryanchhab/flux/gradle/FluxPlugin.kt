@@ -294,6 +294,7 @@ abstract class FluxPlugin @Inject constructor(
         // --- fluxReload ---
         val fluxReload = project.tasks.register<FluxReload>("fluxReload") {
             tierStateDir.set(tierStateDirLoc)
+            safetyPolicy.set(extension.safetyPolicy.map { it.name })
             group = "flux"
             description = "adb shell am broadcast -a dev.ryanchhab.flux.RELOAD, parse result code (CONTRACT.md)."
             dependsOn(fluxPush)
@@ -336,7 +337,6 @@ abstract class FluxPlugin @Inject constructor(
             tierBlockedFix.set(outcomeProvider.map { it.blockedFix ?: "" })
             tierBlockedDetail.set(outcomeProvider.map { it.blockedDetail ?: "" })
             tierNoOp.set(outcomeProvider.map { it.noOp })
-            hardwareChangeSuspected.set(outcomeProvider.map { it.hardwareChangeSuspected })
 
             val liveTuneOutcomeProvider = project.provider { LiveTuneOutcomeIO.read(liveTuneResultFileLoc.get().asFile) }
             liveTuneEligible.set(liveTuneOutcomeProvider.map { it.tunable })

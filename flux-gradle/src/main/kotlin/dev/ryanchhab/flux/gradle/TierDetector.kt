@@ -47,8 +47,23 @@ object TierDetector {
         /** Nothing changed since the last recorded deploy. Skip everything. */
         data class NoOp(val buildId: String) : Tier()
 
-        /** Safe to hot-reload. */
-        data class HotOrHardware(val hardwareChangeSuspected: Boolean) : Tier()
+        /**
+         * Safe to hot-reload.
+         *
+         * There is deliberately no "tier 2 / hardware" variant. The tier model originally
+         * reserved one for a device-driver change that would be applied with a HardwareMap
+         * rebuild, and the flag for it was plumbed all the way through to the deploy header --
+         * but it was hardcoded false at every construction site, so the "tier 2 - hardware"
+         * label could never print. Dead code that advertises a tier which cannot occur is worse
+         * than no tier: it implies Flux might hot-apply a driver change, and it must not.
+         *
+         * Device-driver changes are tier 3, refused, by design. The Robot Controller builds its
+         * HardwareMap from those classes at startup and a reloaded copy is a different type, so
+         * `hardwareMap.get()` would fail on the robot. FluxDeviceGuard detects them in bytecode
+         * and blocks. If a real rebuild path is ever built, it should arrive as its own Tier
+         * variant with the runtime support to match, not as a boolean nobody sets.
+         */
+        object Hot : Tier()
 
         /** Refuse the deploy. Names the exact file/category that forced it, and the fix. */
         data class Blocked(
@@ -112,7 +127,7 @@ object TierDetector {
                 // this is exactly the "requires full install first" case in practice — the user
                 // must have already run installDebug once for the RC app + runtime to exist at
                 // all, so by the time fluxDeploy runs there *is* a known-good install.
-                Tier.HotOrHardware(hardwareChangeSuspected = false)
+                Tier.Hot
             }
 
             previous.buildId == currentBuildId &&
@@ -154,7 +169,7 @@ object TierDetector {
                 fix = "./gradlew installDebug",
             )
 
-            else -> Tier.HotOrHardware(hardwareChangeSuspected = false)
+            else -> Tier.Hot
         }
 
         // Only persist state on a non-blocked outcome — a blocked deploy didn't actually reach

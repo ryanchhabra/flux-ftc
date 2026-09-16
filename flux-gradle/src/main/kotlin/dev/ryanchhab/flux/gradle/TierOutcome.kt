@@ -20,7 +20,6 @@ data class TierOutcome(
     val blockedFix: String? = null,
     val blockedDetail: String? = null,
     val noOp: Boolean = false,
-    val hardwareChangeSuspected: Boolean = false,
     val buildId: String = "",
 )
 
@@ -35,7 +34,6 @@ object TierOutcomeIO {
         outcome.blockedFix?.let { props.setProperty("blockedFix", it) }
         outcome.blockedDetail?.let { props.setProperty("blockedDetail", it) }
         props.setProperty("noOp", outcome.noOp.toString())
-        props.setProperty("hardwareChangeSuspected", outcome.hardwareChangeSuspected.toString())
         props.setProperty("buildId", outcome.buildId)
         file.outputStream().use { props.store(it, "Flux tier-classification result for this build — do not edit by hand") }
     }
@@ -56,7 +54,6 @@ object TierOutcomeIO {
                 blockedFix = props.getProperty("blockedFix"),
                 blockedDetail = props.getProperty("blockedDetail"),
                 noOp = props.getProperty("noOp")?.toBoolean() ?: false,
-                hardwareChangeSuspected = props.getProperty("hardwareChangeSuspected")?.toBoolean() ?: false,
                 buildId = props.getProperty("buildId") ?: "",
             )
         } catch (e: Exception) {

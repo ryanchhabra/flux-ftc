@@ -47,6 +47,15 @@ public final class FluxReloadReceiver extends BroadcastReceiver {
      */
     public static final String EXTRA_EXPECTED_BUILD_ID = "buildId";
 
+    /**
+     * Broadcast extra carrying the team's {@code flux { safetyPolicy = ... }} setting.
+     *
+     * <p>Absent means {@code REJECT}. That default is deliberate: an older Gradle plugin, or
+     * someone firing the broadcast by hand from a shell, gets the safe behaviour rather than the
+     * permissive one. Opting out of the check has to be explicit.
+     */
+    public static final String EXTRA_SAFETY_POLICY = "safetyPolicy";
+
     private static volatile FluxReloadReceiver registeredInstance;
 
     @OnCreate
@@ -97,11 +106,13 @@ public final class FluxReloadReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         String expectedBuildId = intent.getStringExtra(EXTRA_EXPECTED_BUILD_ID);
+        String safetyPolicy = intent.getStringExtra(EXTRA_SAFETY_POLICY);
         RobotLog.ii(TAG, "FLUX: %s received, starting reload", ACTION_RELOAD);
 
         int resultCode;
         try {
-            resultCode = FluxReloadEngine.reload(context.getApplicationContext(), expectedBuildId);
+            resultCode = FluxReloadEngine.reload(
+                    context.getApplicationContext(), expectedBuildId, safetyPolicy);
         } catch (Throwable t) {
             // Absolute last line of defense: nothing in FluxReloadEngine should let an exception
             // escape uncaught (every internal path returns one of the three result codes), but if

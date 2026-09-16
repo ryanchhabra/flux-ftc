@@ -55,6 +55,14 @@ abstract class FluxReload : DefaultTask() {
     @get:Internal
     abstract val tierStateDir: DirectoryProperty
 
+    /**
+     * The team's `flux { safetyPolicy = ... }`, sent with the broadcast. The robot decides; the
+     * plugin only reports what came back. Sending it on every reload rather than configuring the
+     * robot once means the setting takes effect the moment it is edited, with no install.
+     */
+    @get:Input
+    abstract val safetyPolicy: Property<String>
+
     @TaskAction
     fun reload() {
         val start = System.nanoTime()
@@ -62,7 +70,17 @@ abstract class FluxReload : DefaultTask() {
 
         val out = ByteArrayOutputStream()
         val result = exec.exec {
-            commandLine = listOf(adb, "shell", "am", "broadcast", "-a", "dev.ryanchhab.flux.RELOAD")
+            // --es buildId: the runtime already knew how to verify this (FluxReloadEngine compares
+            // it against the BUILD_ID it reads back out of the freshly loaded bundle), but the
+            // Gradle side never sent it, so the check silently degraded to "some BUILD_ID was
+            // readable" rather than "the one I just pushed is live". A push that failed or landed
+            // stale would have reported success.
+            commandLine = listOf(
+                adb, "shell", "am", "broadcast",
+                "-a", "dev.ryanchhab.flux.RELOAD",
+                "--es", "buildId", buildId.get(),
+                "--es", "safetyPolicy", safetyPolicy.getOrElse("REJECT"),
+            )
             standardOutput = out
             errorOutput = out
             isIgnoreExitValue = true
@@ -94,11 +112,25 @@ abstract class FluxReload : DefaultTask() {
 
             2 -> throw GradleException(
                 "Flux: reload FAILED_CLEAN (result=2).\n" +
-                    "  The robot rejected the reload and is still running the previous code — " +
+                    "  The robot refused the reload and is still running the previous code — " +
                     "safe to keep driving.\n" +
-                    "  Fix: check the Driver Station / Robot Controller log for the rejection " +
-                    "reason (often an OpMode was running under safetyPolicy=REJECT), then retry " +
-                    "`./gradlew fluxDeploy`.",
+                    (
+                        if (safetyPolicy.getOrElse("REJECT").equals("FORCE", ignoreCase = true)) {
+                            "  Most likely: an OpMode is running and did not stop in time " +
+                                "(safetyPolicy=FORCE asked it to). An OpMode that will not stop " +
+                                "is usually stuck in its own loop.\n" +
+                                "  Fix: stop it on the Driver Station, then deploy again.\n"
+                        } else {
+                            "  Most likely: an OpMode is running and safetyPolicy is REJECT.\n" +
+                                "  Fix: stop the OpMode on the Driver Station, then deploy again. " +
+                                "To stop it automatically instead, set " +
+                                "`flux { safetyPolicy = dev.ryanchhab.flux.gradle.SafetyPolicy.FORCE }`.\n"
+                        }
+                        ) +
+                    "  Flux will not swap TeamCode classes out from under a running OpMode: it " +
+                    "keeps the classes it already loaded, so the two generations would be " +
+                    "different types sharing a name.\n" +
+                    "  Other causes are logged on the robot: `adb logcat -s FLUX`.",
             )
 
             3 -> throw GradleException(

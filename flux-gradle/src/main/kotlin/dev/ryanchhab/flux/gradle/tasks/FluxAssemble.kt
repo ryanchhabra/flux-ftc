@@ -164,11 +164,7 @@ abstract class FluxAssemble : DefaultTask() {
                 buildId = buildId,
             )
             is TierDetector.Tier.NoOp -> TierOutcome(blocked = false, noOp = true, buildId = buildId)
-            is TierDetector.Tier.HotOrHardware -> TierOutcome(
-                blocked = false,
-                hardwareChangeSuspected = tier.hardwareChangeSuspected,
-                buildId = buildId,
-            )
+            is TierDetector.Tier.Hot -> TierOutcome(blocked = false, buildId = buildId)
         }
         TierOutcomeIO.write(tierResultFile.get().asFile, outcome)
 

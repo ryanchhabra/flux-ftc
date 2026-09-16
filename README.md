@@ -30,6 +30,8 @@ Total            448 ms
 - Keeps hot loaded code across a Robot Controller restart or power cycle.
 - Rolls back to the last working build if a deploy fails, rather than leaving the robot in an
   unknown state.
+- Refuses to reload while an OpMode is running, so code is never swapped out from under a
+  robot that is driving.
 
 ## Requirements
 
@@ -121,6 +123,29 @@ outright rather than letting a team find out on the field.
 On 8.1.0 through 11.2.1, `fluxDoctor` reports `[WARN]`: Flux should work, but those versions are not
 part of its routine testing. If something misbehaves there, please report it, with the `fluxDoctor`
 output and `adb logcat -s FLUX`.
+
+## Reloading while an OpMode is running
+
+By default Flux refuses. A running OpMode keeps the classes it already loaded, while anything
+constructed after a reload comes from the new generation, and those are different types sharing a
+name. On a robot that is driving, that is a safety question, not just a correctness one.
+
+The deploy fails with `FAILED_CLEAN`, which means nothing was touched and the robot is still
+running the code it was running. Stop the OpMode and deploy again.
+
+Live tuning is not affected. Changing an `@FluxLive` constant sets a field on the running OpMode
+and swaps no classes, so it works while the robot is moving. That is the point of it.
+
+To have Flux stop the OpMode for you instead of refusing:
+
+```groovy
+flux {
+    safetyPolicy = dev.ryanchhab.flux.gradle.SafetyPolicy.FORCE
+}
+```
+
+`FORCE` asks the OpMode to stop, waits up to two seconds, and reloads only if it actually stopped.
+If it does not stop in time the reload is still refused rather than forced through.
 
 ## Live tuning
 
