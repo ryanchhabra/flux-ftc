@@ -8,6 +8,7 @@ import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import dev.ryanchhab.flux.gradle.RobotReachability
 import org.gradle.process.ExecOperations
 import org.gradle.work.DisableCachingByDefault
 import java.io.ByteArrayOutputStream
@@ -142,14 +143,7 @@ abstract class FluxTune : DefaultTask() {
                 )
 
                 else -> throw GradleException(
-                    "Flux: no result code from the robot (raw adb output: \"${stdout.trim()}\").\n" +
-                        "  This almost always means either the Flux runtime isn't installed in the " +
-                        "running Robot Controller app, or it doesn't yet register a receiver for " +
-                        "dev.ryanchhab.flux.LIVE_TUNE (CONTRACT.md Amendment 3 -- the robot-side receiver may " +
-                        "not be built yet).\n" +
-                        "  Fix: run `./gradlew fluxDoctor` to confirm the runtime is present; if it " +
-                        "is and this still happens, the LIVE_TUNE receiver isn't wired up on the " +
-                        "robot side yet.",
+                    RobotReachability.explain(exec, adb, "dev.ryanchhab.flux.LIVE_TUNE", stdout),
                 )
             }
         } finally {

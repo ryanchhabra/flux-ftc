@@ -293,6 +293,7 @@ abstract class FluxPlugin @Inject constructor(
 
         // --- fluxReload ---
         val fluxReload = project.tasks.register<FluxReload>("fluxReload") {
+            tierStateDir.set(tierStateDirLoc)
             group = "flux"
             description = "adb shell am broadcast -a dev.ryanchhab.flux.RELOAD, parse result code (CONTRACT.md)."
             dependsOn(fluxPush)

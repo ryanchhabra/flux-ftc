@@ -3,12 +3,15 @@ package dev.ryanchhab.flux.gradle.tasks
 import dev.ryanchhab.flux.gradle.FluxTimingService
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
+import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import dev.ryanchhab.flux.gradle.TierDetector
+import dev.ryanchhab.flux.gradle.RobotReachability
 import org.gradle.process.ExecOperations
 import org.gradle.work.DisableCachingByDefault
 import java.io.ByteArrayOutputStream
@@ -44,6 +47,14 @@ abstract class FluxReload : DefaultTask() {
     @get:Internal
     abstract val timingService: Property<FluxTimingService>
 
+    /**
+     * Tier state, so a failed reload can clear the recorded BUILD_ID. Tier classification writes
+     * that state before anything reaches the robot, so without this a failed deploy leaves the
+     * baseline claiming success and the retry skips as Tier 0.
+     */
+    @get:Internal
+    abstract val tierStateDir: DirectoryProperty
+
     @TaskAction
     fun reload() {
         val start = System.nanoTime()
@@ -61,6 +72,12 @@ abstract class FluxReload : DefaultTask() {
 
         val elapsedMs = (System.nanoTime() - start) / 1_000_000
         timingService.orNull?.record(FluxTimingService.STAGE_RELOAD, elapsedMs)
+
+        // Any outcome other than a confirmed success means the robot is NOT running this build, so
+        // the baseline recorded during classification must not be allowed to stand.
+        if (code != 1) {
+            tierStateDir.orNull?.asFile?.let { TierDetector.invalidateBuildId(it) }
+        }
 
         if (result.exitValue != 0) {
             throw GradleException(
@@ -92,12 +109,7 @@ abstract class FluxReload : DefaultTask() {
             )
 
             else -> throw GradleException(
-                "Flux: no result code from the robot (raw adb output: \"${stdout.trim()}\").\n" +
-                    "  This almost always means the Flux runtime isn't installed in the running " +
-                    "Robot Controller app (as opposed to being installed and rejecting the reload).\n" +
-                    "  Fix: run `./gradlew installDebug` once to install an APK containing " +
-                    "flux-runtime, then retry `./gradlew fluxDeploy`. Run `./gradlew fluxDoctor` " +
-                    "to confirm.",
+                RobotReachability.explain(exec, adb, "dev.ryanchhab.flux.RELOAD", stdout),
             )
         }
     }

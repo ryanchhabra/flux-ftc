@@ -188,6 +188,25 @@ object TierDetector {
      * the block would still be there on every subsequent run, even after the user did the full
      * install we told them to do.
      */
+    /**
+     * Clears only the recorded BUILD_ID, so the next deploy cannot classify as Tier 0.
+     *
+     * Tier state is written during classification, which happens before anything is pushed. If the
+     * reload then fails -- the Robot Controller app was closed, say -- the baseline has already
+     * moved, and the retry reports "nothing changed since the last deploy" and skips. The user
+     * fixes the actual problem, runs fluxDeploy again, is told everything is fine, and the robot
+     * is still running the old code. Hit exactly this way on the emulator.
+     *
+     * Only the BUILD_ID is cleared, not the whole file. Dropping the manifest/res/assets/deps
+     * fingerprints too would mean a genuine Tier 3 change made after the failure went undetected
+     * until the next full install, trading a visible annoyance for a silent one.
+     */
+    fun invalidateBuildId(stateDir: File) {
+        val file = File(stateDir, STATE_FILE_NAME)
+        val existing = (loadState(file) as? Loaded.Ok)?.state ?: return
+        saveState(file, existing.copy(buildId = ""))
+    }
+
     fun recordBaseline(
         stateDir: File,
         manifestFile: File,
