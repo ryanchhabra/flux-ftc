@@ -20,11 +20,11 @@ plugins {
 
 // Must match flux-gradle's coordinates: the two halves speak one wire protocol (CONTRACT.md) and
 // a version mismatch between them is exactly the skew that produces confusing robot-side failures.
-group = 'dev.flux'
+group = 'dev.ryanchhab'
 version = '0.1.0-alpha'
 
 android {
-    namespace 'dev.flux.runtime'
+    namespace 'dev.ryanchhab.flux.runtime'
     compileSdk 34
 
     defaultConfig {

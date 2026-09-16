@@ -67,7 +67,7 @@ The reload sequence (`architecture.md` §3.2):
    `RESULT_FAILED_DIRTY` (state unknown, tell the user to restart the RC app).
 
 ### `FluxReloadReceiver`
-A `BroadcastReceiver` for `dev.flux.RELOAD`, registered dynamically via
+A `BroadcastReceiver` for `dev.ryanchhab.flux.RELOAD`, registered dynamically via
 `Context.registerReceiver` from `@OnCreate`/`@OnDestroy` (`org.firstinspires.ftc.ftccommon.external`)
 rather than a manifest `<receiver>` entry — matches the reference implementation
 (`hot-reload-prior-art.md` §2.4). Calls `FluxReloadEngine.reload(...)` and reports the result via
@@ -106,7 +106,7 @@ swap, target ~10-50 ms instead of a reload's ~0.5-1 s.
    caller must still be told it wasn't all-or-nothing).
 
 ### `FluxLiveTuneReceiver`
-A `BroadcastReceiver` for `dev.flux.LIVE_TUNE`, registered the same `@OnCreate`/`@OnDestroy` way as
+A `BroadcastReceiver` for `dev.ryanchhab.flux.LIVE_TUNE`, registered the same `@OnCreate`/`@OnDestroy` way as
 `FluxReloadReceiver` — a separate receiver/action rather than teaching `FluxReloadReceiver` a second
 action, so a live-tune broadcast can never be misrouted into the much more expensive reload path.
 Calls `FluxLiveTuning.apply(...)` and reports the result via `setResultCode(...)`.
@@ -125,7 +125,7 @@ current values to `live_values_current.json` in the exact same flat-array shape
 three-code result triad.
 
 ### `FluxLiveReadReceiver`
-A `BroadcastReceiver` for `dev.flux.LIVE_READ`, registered the same `@OnCreate`/`@OnDestroy` way as
+A `BroadcastReceiver` for `dev.ryanchhab.flux.LIVE_READ`, registered the same `@OnCreate`/`@OnDestroy` way as
 the other two receivers, and kept separate from them for the same "one action, one receiver, one
 result path" reasoning. Calls `FluxLiveReadback.apply(...)` and reports the result via
 `setResultCode(...)`.

@@ -7,7 +7,7 @@ index f7307a8..28c5e18 100644
 +plugins {
 +    id 'com.android.application'
 +    id 'org.jetbrains.kotlin.android'
-+    id 'dev.flux.load'
++    id 'dev.ryanchhab.flux'
 +}
  
  //

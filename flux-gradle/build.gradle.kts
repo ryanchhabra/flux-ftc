@@ -4,7 +4,7 @@ plugins {
     `java-gradle-plugin`
 }
 
-group = "dev.flux"
+group = "dev.ryanchhab"
 version = "0.1.0-alpha"
 
 repositories {
@@ -40,8 +40,8 @@ dependencies {
 gradlePlugin {
     plugins {
         create("fluxLoad") {
-            id = "dev.flux.load"
-            implementationClass = "dev.flux.gradle.FluxPlugin"
+            id = "dev.ryanchhab.flux"
+            implementationClass = "dev.ryanchhab.flux.gradle.FluxPlugin"
             displayName = "FTC Flux"
             description = "Hot-code-reload deploy pipeline for FIRST Tech Challenge TeamCode."
             tags = listOf("ftc", "android", "hot-reload", "robotics")

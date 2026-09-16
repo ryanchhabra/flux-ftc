@@ -1,7 +1,7 @@
 <idea-plugin>
-    <id>dev.flux.idea</id>
+    <id>dev.ryanchhab.flux.idea</id>
     <name>FTC Flux</name>
-    <vendor>dev.flux</vendor>
+    <vendor>dev.ryanchhab</vendor>
 
     <!--
       Base platform only (no Java/Android/Gradle plugin dependency). This plugin never reads
@@ -13,7 +13,7 @@
 
     <description><![CDATA[
         Deploy button, live robot connection status, and hot-reload timing for
-        <a href="https://github.com">FTC Flux</a> (the <code>dev.flux.load</code> Gradle plugin).
+        <a href="https://github.com">FTC Flux</a> (the <code>dev.ryanchhab.flux</code> Gradle plugin).
         <br/><br/>
         Runs <code>./gradlew fluxDeploy</code> for you and shows the result: tier, per-stage
         timings, or the blocked reason, without hand-building a Run Configuration or opening a
@@ -24,12 +24,12 @@
         <toolWindow id="Flux"
                     anchor="right"
                     icon="AllIcons.Actions.Lightning"
-                    factoryClass="dev.flux.idea.FluxToolWindowFactory"/>
+                    factoryClass="dev.ryanchhab.flux.idea.FluxToolWindowFactory"/>
     </extensions>
 
     <actions>
-        <action id="dev.flux.idea.Deploy"
-                class="dev.flux.idea.FluxDeployAction"
+        <action id="dev.ryanchhab.flux.idea.Deploy"
+                class="dev.ryanchhab.flux.idea.FluxDeployAction"
                 text="Flux Deploy"
                 description="Run fluxDeploy (hot-reload the connected robot)"
                 icon="AllIcons.Actions.Lightning">

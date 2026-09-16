@@ -17,7 +17,7 @@ public class FluxDelegationTest {
     private static Method isTeamCode;
 
     public static void main(String[] args) throws Exception {
-        Class<?> d = Class.forName("dev.flux.runtime.FluxDelegation");
+        Class<?> d = Class.forName("dev.ryanchhab.flux.runtime.FluxDelegation");
         routeFor = d.getDeclaredMethod("routeFor", String.class);
         routeFor.setAccessible(true);
         isTeamCode = d.getDeclaredMethod("isTeamCode", String.class);

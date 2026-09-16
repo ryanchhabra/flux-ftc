@@ -11,7 +11,7 @@ full design rationale (§4 tiered deploy, §5 performance, §9 ease of use).
 
 ## Applying the plugin
 
-Apply `dev.flux.load` to your **TeamCode module** — the `com.android.library` module that holds
+Apply `dev.ryanchhab.flux` to your **TeamCode module** — the `com.android.library` module that holds
 your OpModes (a `com.android.application` module also works, in case your project structures
 TeamCode as the app module directly):
 
@@ -19,7 +19,7 @@ TeamCode as the app module directly):
 // TeamCode/build.gradle.kts
 plugins {
     id("com.android.library")
-    id("dev.flux.load")
+    id("dev.ryanchhab.flux")
 }
 ```
 
@@ -48,9 +48,9 @@ flux {
 | `fluxAssemble` | Generates `__FluxVersion` (the BUILD_ID stamp, CONTRACT.md), wires it into AGP's normal debug compile via the Variant API, and classifies the deploy tier (architecture.md §4) — this is the one task that always runs, since it's what produces the classification everyone else reads. |
 | `fluxDex` | Runs D8 directly (`com.android.tools.r8.D8`) against the compiled debug classes, always in a debug-equivalent invocation (no minification, line numbers kept, `--min-api 24`) regardless of the app's own build variant, and packages the result as `flux_bundle.jar`. Uses a persistent, content-hash-keyed per-class dex cache so unchanged classes are never re-dexed — this is the main measured win over full-rebuild competitors. |
 | `fluxPush` | `adb push`es the bundle to the on-robot deploy directory, rotating the previous bundle to `flux_bundle.last.jar` first so the runtime has a rollback target. |
-| `fluxReload` | `adb shell am broadcast -a dev.flux.RELOAD`, parses `result=N` from the broadcast output, and reports one of three distinct outcomes — `1` success, `2` failed-clean (safe, still on old code), `3` failed-dirty (**restart the Robot Controller app**) — or, if no result code comes back at all, that the Flux runtime isn't installed. |
-| `fluxTune` | **Tier L (live tuning) — CONTRACT.md Amendment 3.** Writes `live_values.json` for every eligible field whose *literal value* changed, `adb push`es it to `/sdcard/FIRST/flux/live_values.json`, then `adb shell am broadcast -a dev.flux.LIVE_TUNE` and parses `result=N` — same three-outcome shape as `fluxReload` (`1` applied, `2` nothing applied/clean, `3` **partially applied**, i.e. the robot is now in a mixed state). Depends only on `fluxAssemble`, not `fluxDex`/`fluxPush`/`fluxReload` — that's the entire point (see below). |
-| `fluxRead` | **Live-value read-back — CONTRACT.md Amendment 4.** The mirror image of `fluxTune`: collects the current `@FluxLive` class/field set straight from source (`LiveTuneDetector.currentFields`), pushes a small JSON request naming those classes, `adb shell am broadcast -a dev.flux.LIVE_READ`, pulls the robot's answer, and prints a table of source value vs. robot value per field — flagging any that differ. That diff is the point: "the robot is running kP=0.042 but your source says 0.012" without hand-inspecting a JSON file over adb. Standalone — no dependency on `fluxAssemble`/tier classification, since read-back is a query, not a deploy. |
+| `fluxReload` | `adb shell am broadcast -a dev.ryanchhab.flux.RELOAD`, parses `result=N` from the broadcast output, and reports one of three distinct outcomes — `1` success, `2` failed-clean (safe, still on old code), `3` failed-dirty (**restart the Robot Controller app**) — or, if no result code comes back at all, that the Flux runtime isn't installed. |
+| `fluxTune` | **Tier L (live tuning) — CONTRACT.md Amendment 3.** Writes `live_values.json` for every eligible field whose *literal value* changed, `adb push`es it to `/sdcard/FIRST/flux/live_values.json`, then `adb shell am broadcast -a dev.ryanchhab.flux.LIVE_TUNE` and parses `result=N` — same three-outcome shape as `fluxReload` (`1` applied, `2` nothing applied/clean, `3` **partially applied**, i.e. the robot is now in a mixed state). Depends only on `fluxAssemble`, not `fluxDex`/`fluxPush`/`fluxReload` — that's the entire point (see below). |
+| `fluxRead` | **Live-value read-back — CONTRACT.md Amendment 4.** The mirror image of `fluxTune`: collects the current `@FluxLive` class/field set straight from source (`LiveTuneDetector.currentFields`), pushes a small JSON request naming those classes, `adb shell am broadcast -a dev.ryanchhab.flux.LIVE_READ`, pulls the robot's answer, and prints a table of source value vs. robot value per field — flagging any that differ. That diff is the point: "the robot is running kP=0.042 but your source says 0.012" without hand-inspecting a JSON file over adb. Standalone — no dependency on `fluxAssemble`/tier classification, since read-back is a query, not a deploy. |
 | `fluxDeploy` | The user-facing lifecycle task. Runs the whole pipeline in order and prints a stage-timing table. If tier classification says the change is unsafe to hot-deploy, it refuses immediately — before touching dex/push/reload — and names the exact file that forced it plus the fix (`./gradlew installDebug`). If nothing changed since the last deploy, it says so and skips the rest. If the *only* change was an eligible live-tunable literal, it routes into `fluxTune` instead of the compile/dex/push/reload pipeline and reports `tier L · live` with the fields it set. |
 | `fluxDoctor` | One-command setup diagnosis: is adb located, is a device connected and authorized, is the Robot Controller app installed with the Flux runtime's reload receiver registered, and is the FTC SDK version on the classpath one Flux Phase 0 supports. Prints a pass/fail checklist with a fix for each failure. |
 
@@ -95,7 +95,7 @@ Implemented tiers:
   for the full list.
 - **`fluxTune`'s LIVE_TUNE result parsing was verified up to and including the push** against the
   real API 25 emulator in `test-ftc-project/`, with correctly-shaped `live_values.json` payloads
-  for both Java and Kotlin multi-file, multi-field changes. The `dev.flux.LIVE_TUNE` broadcast
+  for both Java and Kotlin multi-file, multi-field changes. The `dev.ryanchhab.flux.LIVE_TUNE` broadcast
   itself returned `result=0` (no receiver responded) in that verification run, because the
   robot-side receiver was being built in parallel and wasn't wired up yet at the time — this is
   the same "no result code" outcome `fluxReload` already reports for a missing runtime, not a bug
@@ -106,7 +106,7 @@ Implemented tiers:
   a confirmed-matching one — architecture.md §5's "honest caveat" applies here too: no claim is
   made that isn't backed by what was actually measured.
 - **`fluxDoctor`'s "runtime present" check is a presence check, not a version check.** It greps
-  `adb shell dumpsys package` for a receiver registered against `dev.flux.RELOAD`, which confirms
+  `adb shell dumpsys package` for a receiver registered against `dev.ryanchhab.flux.RELOAD`, which confirms
   *something* is listening but can't read that runtime's version without a real handshake
   (architecture.md §7, Phase 1+).
 - **Dependency-set change detection resolves the module's `debugRuntimeClasspath` (falling back to

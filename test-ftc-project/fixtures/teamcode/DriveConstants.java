@@ -1,6 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
-import dev.flux.runtime.FluxLive;
+import dev.ryanchhab.flux.runtime.FluxLive;
 
 /** Live-tunable constants. Edit a value, save, deploy — no reload, no OpMode restart. */
 @FluxLive

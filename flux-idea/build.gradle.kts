@@ -6,7 +6,7 @@ plugins {
     id("org.jetbrains.intellij.platform")
 }
 
-group = "dev.flux"
+group = "dev.ryanchhab"
 version = "0.1.0-alpha"
 
 repositories {
@@ -38,12 +38,12 @@ kotlin {
 
 intellijPlatform {
     pluginConfiguration {
-        id = "dev.flux.idea"
+        id = "dev.ryanchhab.flux.idea"
         name = "FTC Flux"
         version = project.version.toString()
         description = """
             Deploy button, live robot connection status, and hot-reload timing for FTC Flux
-            (dev.flux.load) — the Gradle-only fluxDeploy pipeline, wrapped in IDE UI so nobody
+            (dev.ryanchhab.flux) — the Gradle-only fluxDeploy pipeline, wrapped in IDE UI so nobody
             has to hand-build a Run Configuration or touch a terminal. See ecosystem-positioning.md
             §2-3: no existing FTC plugin combines a deploy button, live status, and hot reload.
         """.trimIndent()

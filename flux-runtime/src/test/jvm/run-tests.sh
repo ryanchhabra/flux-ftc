@@ -7,7 +7,7 @@
 # it was extracted) and runs the assertions against it.
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
-SRC="$HERE/../../main/java/dev/flux/runtime/FluxDelegation.java"
+SRC="$HERE/../../main/java/dev/ryanchhab/flux/runtime/FluxDelegation.java"
 OUT="$(mktemp -d)"
 trap 'rm -rf "$OUT"' EXIT
 

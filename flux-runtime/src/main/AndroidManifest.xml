@@ -8,7 +8,7 @@
   compiled into the RC app — which flux-runtime is, since it's a compileOnly/regular Gradle
   dependency of the app, not something pushed at runtime. No <meta-data> registration, no
   <receiver> entry, and no package attribute are needed: the namespace comes from build.gradle's
-  `namespace 'dev.flux.runtime'` (AGP handles that), and the runtime registers its own
+  `namespace 'dev.ryanchhab.flux.runtime'` (AGP handles that), and the runtime registers its own
   BroadcastReceiver dynamically via Context.registerReceiver(...) from @OnCreate rather than a
   manifest-declared static receiver — a static <receiver> would only ever see broadcasts sent
   while the app isn't running, which is irrelevant here (the RC app is always running when a

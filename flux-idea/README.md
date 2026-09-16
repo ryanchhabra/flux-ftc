@@ -122,7 +122,7 @@ Android Studio at runtime. Kotlin 2.0.21, JVM toolchain 17.
   avoided — see "How a deploy is run" above).
 - **Task name is hardcoded to the bare `fluxDeploy` task**, not a module-qualified path like
   `:TeamCode:fluxDeploy`. Gradle resolves a bare task name against whichever module applies
-  `dev.flux.load`, which works for the common single-TeamCode-module layout but would need
+  `dev.ryanchhab.flux`, which works for the common single-TeamCode-module layout but would need
   disambiguation in a multi-module project with more than one module applying the plugin.
 - **`runIde` (launching a real sandbox IDE) was not attempted** in this environment, per the
   task's own instruction — only `gradle build` was verified.

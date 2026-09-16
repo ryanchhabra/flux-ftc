@@ -9,7 +9,7 @@ here.
 | | `sdk/` | `consumer/` |
 |---|---|---|
 | **Wired like** | Flux's own working copy (composite build) | a real team's project (published coordinates) |
-| **Settings.gradle uses** | `includeBuild('../../flux-gradle')` + `project(':flux-runtime').projectDir = file(...)` | `mavenLocal()` + `plugins { id 'dev.flux.load' version '...' }` + `implementation 'dev.flux:flux-runtime:...'` |
+| **Settings.gradle uses** | `includeBuild('../../flux-gradle')` + `project(':flux-runtime').projectDir = file(...)` | `mavenLocal()` + `plugins { id 'dev.ryanchhab.flux' version '...' }` + `implementation 'dev.ryanchhab:flux-runtime:...'` |
 | **Requires** | Flux's source tree at a known relative path | only `gradle publishToMavenLocal` from `flux-runtime` and `flux-gradle` |
 | **Purpose** | fast local iteration on Flux itself — no publish step needed to test a change | proves and documents the path an outside team actually uses |
 | **Recreated by** | `./test-ftc-project/setup.sh` | manual clone + wiring (see below); no script yet, kept deliberately minimal |
@@ -60,7 +60,7 @@ git clone --depth 1 https://github.com/FIRST-Tech-Challenge/FtcRobotController.g
 
 then apply the changes described in `docs/GETTING-STARTED.md` §"Build file changes" (add
 `mavenLocal()` to `pluginManagement.repositories` and `allprojects.repositories` in the root
-`settings.gradle`/`build.gradle`, add the `dev.flux.load` plugin and `flux-runtime` dependency to
+`settings.gradle`/`build.gradle`, add the `dev.ryanchhab.flux` plugin and `flux-runtime` dependency to
 `TeamCode/build.gradle`), copy in `fixtures/teamcode/*`, and write `local.properties`.
 
 ## Gotchas
