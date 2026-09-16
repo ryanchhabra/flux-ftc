@@ -1,0 +1,44 @@
+// flux-runtime — the code that ships INSIDE the Robot Controller APK.
+//
+// This module is Java 8 only, no Kotlin (see CONTRACT.md "Language"). Reason: this library is
+// compiled into the RC app itself (unlike TeamCode, which is hot-reloaded from a pushed dex), so
+// anything it depends on becomes a permanent, un-reloadable part of every team's robot. Dragging
+// in the Kotlin stdlib here would duplicate-define kotlin.* classes across every RC app that uses
+// Flux, for zero benefit — the runtime itself has no need of Kotlin.
+//
+// FTC SDK dependencies are `compileOnly`: RobotCore/FtcCommon classes must come from the app that
+// actually embeds flux-runtime (the FtcRobotController app already depends on them at the versions
+// it ships), never bundled a second time. `implementation` here would duplicate SDK classes into
+// the APK's dex under a second identity — precisely the class-identity hazard this whole project
+// is built to avoid (see docs/research/risks.md §1-2). Using `compileOnly` means the classes are
+// visible to javac but contribute nothing to the runtime artifact.
+
+plugins {
+    id 'com.android.library'
+}
+
+android {
+    namespace 'dev.flux.runtime'
+    compileSdk 34
+
+    defaultConfig {
+        minSdk 24
+        targetSdk 28
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+repositories {
+    mavenCentral()
+    google()
+}
+
+dependencies {
+    // compileOnly: see the module-level comment above. The host RC app supplies these at runtime.
+    compileOnly 'org.firstinspires.ftc:RobotCore:12.0.0'
+    compileOnly 'org.firstinspires.ftc:FtcCommon:12.0.0'
+}

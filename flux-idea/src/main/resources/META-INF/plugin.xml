@@ -1,0 +1,44 @@
+<idea-plugin>
+    <id>dev.flux.idea</id>
+    <name>FTC Flux</name>
+    <vendor>dev.flux</vendor>
+
+    <!--
+      Base platform only (no Java/Android/Gradle plugin dependency). This plugin never reads
+      project sources or PSI: it drives the fluxDeploy Gradle task as an external process and
+      polls `adb devices`, both of which are plain platform APIs. See CONTRACT.md and the
+      "constraints" section of the build task this plugin was written for: keep it tight.
+    -->
+    <depends>com.intellij.modules.platform</depends>
+
+    <description><![CDATA[
+        Deploy button, live robot connection status, and hot-reload timing for
+        <a href="https://github.com">FTC Flux</a> (the <code>dev.flux.load</code> Gradle plugin).
+        <br/><br/>
+        Runs <code>./gradlew fluxDeploy</code> for you and shows the result: tier, per-stage
+        timings, or the blocked reason, without hand-building a Run Configuration or opening a
+        terminal.
+    ]]></description>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="Flux"
+                    anchor="right"
+                    icon="AllIcons.Actions.Lightning"
+                    factoryClass="dev.flux.idea.FluxToolWindowFactory"/>
+    </extensions>
+
+    <actions>
+        <action id="dev.flux.idea.Deploy"
+                class="dev.flux.idea.FluxDeployAction"
+                text="Flux Deploy"
+                description="Run fluxDeploy (hot-reload the connected robot)"
+                icon="AllIcons.Actions.Lightning">
+            <add-to-group group-id="ToolsMenu" anchor="first"/>
+            <!-- architecture.md §8's mockup shows Cmd+Shift+D on the Mac keymap; ctrl+shift+D
+                 is the equivalent default binding on Windows/Linux keymaps. -->
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift D"/>
+            <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta shift D"/>
+            <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="meta shift D"/>
+        </action>
+    </actions>
+</idea-plugin>

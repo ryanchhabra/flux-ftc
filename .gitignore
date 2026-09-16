@@ -1,0 +1,28 @@
+# --- Third-party checkout -----------------------------------------------------------------
+# FIRST's own repo (~300 MB). Recreated by test-ftc-project/setup.sh; our part lives in
+# test-ftc-project/fixtures/, which IS committed.
+test-ftc-project/sdk/
+
+# --- Build output -------------------------------------------------------------------------
+build/
+out/
+.gradle/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+*.apk
+*.dex
+
+# --- Machine-specific ---------------------------------------------------------------------
+local.properties
+.env
+
+# --- IDE ----------------------------------------------------------------------------------
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# --- OS -----------------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
