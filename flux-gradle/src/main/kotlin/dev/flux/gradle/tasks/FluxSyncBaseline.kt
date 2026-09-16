@@ -14,6 +14,7 @@ import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
+import org.gradle.work.DisableCachingByDefault
 
 /**
  * `fluxSyncBaseline` — records the current state of the module as the new "known good" baseline,
@@ -42,6 +43,7 @@ import org.gradle.api.tasks.TaskAction
  * as a finalizer of `installDebug`/`installRelease`, so it happens automatically and the user never
  * has to know this mechanism exists.
  */
+@DisableCachingByDefault(because = "Records whatever is on disk right now as the known-good baseline; it must observe the real current state every time.")
 abstract class FluxSyncBaseline : DefaultTask() {
 
     @get:InputFiles

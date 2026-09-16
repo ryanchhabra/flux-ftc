@@ -10,6 +10,7 @@ import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.gradle.process.ExecOperations
+import org.gradle.work.DisableCachingByDefault
 import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 
@@ -25,6 +26,7 @@ import javax.inject.Inject
  *    runtime isn't installed in the running RC app at all (as opposed to running and rejecting).
  *    Said explicitly rather than treated as a generic failure.
  */
+@DisableCachingByDefault(because = "Triggers a reload on a live device; the result depends on robot state Gradle cannot observe.")
 abstract class FluxReload : DefaultTask() {
 
     @get:Inject

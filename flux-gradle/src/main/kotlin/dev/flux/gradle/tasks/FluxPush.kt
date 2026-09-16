@@ -9,6 +9,9 @@ import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.gradle.process.ExecOperations
+import org.gradle.work.DisableCachingByDefault
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
 import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 
@@ -23,12 +26,15 @@ import javax.inject.Inject
  * Uses the injected [ExecOperations] rather than `project.exec` — the latter is unavailable to
  * task actions under Gradle 9's configuration cache.
  */
+@DisableCachingByDefault(because = "Side effect is on the robot, not in the build directory. Gradle cannot know whether the device still holds the pushed bundle.")
 abstract class FluxPush : DefaultTask() {
 
     @get:Inject
     abstract val exec: ExecOperations
 
     @get:InputFile
+    // Only the jar's CONTENT decides whether a push is needed; where it sits on disk does not.
+    @get:PathSensitive(PathSensitivity.NONE)
     abstract val bundleJar: RegularFileProperty
 
     @get:Input

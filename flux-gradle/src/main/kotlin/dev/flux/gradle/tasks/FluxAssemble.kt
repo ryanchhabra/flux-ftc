@@ -24,6 +24,7 @@ import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
+import org.gradle.work.DisableCachingByDefault
 
 /**
  * `fluxAssemble` — CONTRACT.md: "Build the TeamCode class output + generate `__FluxVersion`".
@@ -52,6 +53,7 @@ import org.gradle.api.tasks.TaskAction
  * evaluation of an AGP artifact `Provider` before its producing task has run, or need extra
  * plumbing to guarantee ordering — this is simpler and correct by construction.
  */
+@DisableCachingByDefault(because = "Classifies the deploy tier by comparing against the last successful deploy, which is state outside Gradle's input tracking -- a cached result would report a stale tier.")
 abstract class FluxAssemble : DefaultTask() {
 
     @get:InputFiles

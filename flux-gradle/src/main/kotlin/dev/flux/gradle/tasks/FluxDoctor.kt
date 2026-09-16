@@ -6,6 +6,7 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
 import org.gradle.process.ExecOperations
+import org.gradle.work.DisableCachingByDefault
 import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 
@@ -28,6 +29,7 @@ import javax.inject.Inject
  * `dumpsys package` for a registered `dev.flux.RELOAD` receiver, which cannot report the
  * runtime's *version* — only that *something* is listening for the action.
  */
+@DisableCachingByDefault(because = "Diagnostic task that probes the live adb connection and the device; its whole value is being current.")
 abstract class FluxDoctor : DefaultTask() {
 
     @get:Inject

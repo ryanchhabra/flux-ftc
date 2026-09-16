@@ -12,6 +12,7 @@ import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import org.gradle.process.ExecOperations
+import org.gradle.work.DisableCachingByDefault
 import java.io.ByteArrayOutputStream
 import java.io.File
 import javax.inject.Inject
@@ -31,6 +32,7 @@ import javax.inject.Inject
  * standalone (no dependency on `fluxAssemble`/tier classification) — read-back is a query, not a
  * deploy, and the source scan it needs is cheap enough to just do inline.
  */
+@DisableCachingByDefault(because = "Queries the live values currently held by the running OpMode on the robot; a cached answer would defeat the entire purpose of reading them back.")
 abstract class FluxRead : DefaultTask() {
 
     @get:Inject

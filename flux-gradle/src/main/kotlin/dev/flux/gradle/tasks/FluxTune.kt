@@ -9,6 +9,7 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.gradle.process.ExecOperations
+import org.gradle.work.DisableCachingByDefault
 import java.io.ByteArrayOutputStream
 import java.io.File
 import javax.inject.Inject
@@ -35,6 +36,7 @@ import javax.inject.Inject
  *  - `3` **partially applied** — some fields landed, some didn't, and the robot is now in a
  *    genuinely mixed state that this tool cannot see into. Said loudly, not glossed over.
  */
+@DisableCachingByDefault(because = "Writes field values to a running OpMode on the device; the effect is entirely outside the build.")
 abstract class FluxTune : DefaultTask() {
 
     @get:Inject

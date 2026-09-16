@@ -8,6 +8,7 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
+import org.gradle.work.DisableCachingByDefault
 
 /**
  * `fluxDeploy` — CONTRACT.md's user-facing lifecycle task: "all of the above, with stage
@@ -21,6 +22,7 @@ import org.gradle.api.tasks.TaskAction
  *  - **Hot**: print the stage timing table (architecture.md §5) — instrumentation is a core
  *    feature here, not decoration.
  */
+@DisableCachingByDefault(because = "Pure reporting task: it prints the timing table for work its dependencies did, and must run every invocation.")
 abstract class FluxDeploy : DefaultTask() {
 
     @get:Internal
