@@ -30,6 +30,16 @@ dependencies {
         // runner, and CONTRACT.md/the brief both push against pulling in more than necessary.
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
     }
+
+    // Plain JUnit 5 for the pure-logic tests (FluxLiveSourceScanner, SourceFieldWriter) that don't
+    // need the IntelliJ platform test fixtures at all -- see their test classes' docs.
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    // The IntelliJ Platform Gradle plugin's own JUnit5TestSessionListener (pulled in by
+    // testFramework(Platform) above) is compiled against JUnit 4 and fails to load without it on
+    // the classpath, even for tests that are themselves plain JUnit 5 and never touch the
+    // platform -- see FluxLiveSourceScannerTest/SourceFieldWriterTest.
+    testRuntimeOnly("junit:junit:4.13.2")
 }
 
 kotlin {

@@ -123,11 +123,20 @@ object GradleProjectLocator {
      *   - `flux-idea/build.gradle.kts` mentions it in a comment
      *   - only `test-ftc-project/sdk/TeamCode/build.gradle` **applies** it -> `id 'dev.ryanchhab.flux'`
      *
-     * The `[^=]` guard after `id` is what rejects the registration form, which is the one that
-     * would otherwise send Flux at its own Gradle plugin build instead of the robot project.
+     * The `(?!\s*=)` guard after `id\s*` is what rejects the registration form (`id = "..."`),
+     * which is the one that would otherwise send Flux at its own Gradle plugin build instead of
+     * the robot project.
+     *
+     * Bug fixed 2026-09-16 (found while building live tuning): this previously matched the
+     * pre-rename id `dev.flux.load`, which is neither the plugin's current id (`dev.ryanchhab.flux`,
+     * per CONTRACT.md and every build.gradle in this repo) nor one that ever existed under that
+     * exact string -- so `appliesFluxPlugin` silently never matched any real project and
+     * `GradleProjectLocator` fell back to the weaker `hasWrapper` heuristic for every user. Fixed
+     * here rather than left, since "do not reintroduce the old name" is an explicit constraint and
+     * this was the old name.
      */
     private val APPLY_PATTERN = Regex(
-        """(?:id\s*\(?\s*['"]dev\.flux\.load['"]|apply\s+plugin:\s*['"]dev\.flux\.load['"])""",
+        """(?:id\s*\(?\s*(?!=)['"]dev\.ryanchhab\.flux['"]|apply\s+plugin:\s*['"]dev\.ryanchhab\.flux['"])""",
     )
 }
 

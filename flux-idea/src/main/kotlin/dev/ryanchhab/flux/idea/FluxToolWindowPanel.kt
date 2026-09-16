@@ -19,6 +19,7 @@ import java.io.File
 import java.awt.Dimension
 import javax.swing.JComponent
 import javax.swing.JPanel
+import javax.swing.JSeparator
 
 /**
  * The "Flux" tool window content. Mirrors the mockup in architecture.md §8:
@@ -120,6 +121,8 @@ class FluxToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
         }
         resultPanelRef = resultPanel
 
+        val liveTuningPanel = LiveTuningPanel(project)
+
         val top = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
             alignmentX = LEFT_ALIGNMENT
@@ -130,6 +133,10 @@ class FluxToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
             add(projectRow)
             add(Box.createVerticalStrut(8))
             add(resultPanel)
+            add(Box.createVerticalStrut(8))
+            add(JSeparator())
+            liveTuningPanel.alignmentX = LEFT_ALIGNMENT
+            add(liveTuningPanel)
         }
 
         add(top, BorderLayout.NORTH)
