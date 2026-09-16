@@ -29,11 +29,11 @@
         {
           "name": "flux-gradle-0.1.0-alpha.jar",
           "url": "flux-gradle-0.1.0-alpha.jar",
-          "size": 263585,
-          "sha512": "747adfd3cffb9e4843da2a357eb4044f6224365a7902956539e6a0fc0371e06adf508df04d3337637a9a6e19a1fe2e16139346b6dee49d4bd90facb0ba0d9d41",
-          "sha256": "18e814a272a56e816c94e8505e760672abbc523974533284340b173091889cac",
-          "sha1": "5c920b96ab75181bcf73dd1e45c6ad1c55c8c653",
-          "md5": "4086561cc571ac64f660fb972fee579f"
+          "size": 275291,
+          "sha512": "88087a885ed2d56b0169fb14f44eaf92003aa6d0cd3a2d50882db2452c95f5b19d4ab19b4ca85d889915cbe88900f3237c6f77c30eda8df04f2ecc660e78538e",
+          "sha256": "b3f04785b651b5793078ec86062c0ca0beb8eb1c1b192686d733beab5caf969f",
+          "sha1": "1d678f0ec2d9e75565f2f3eb19136e085c3919d6",
+          "md5": "d487ebfd8f2bf1fc43fa382fd4c93f36"
         }
       ]
     },
@@ -61,11 +61,11 @@
         {
           "name": "flux-gradle-0.1.0-alpha.jar",
           "url": "flux-gradle-0.1.0-alpha.jar",
-          "size": 263585,
-          "sha512": "747adfd3cffb9e4843da2a357eb4044f6224365a7902956539e6a0fc0371e06adf508df04d3337637a9a6e19a1fe2e16139346b6dee49d4bd90facb0ba0d9d41",
-          "sha256": "18e814a272a56e816c94e8505e760672abbc523974533284340b173091889cac",
-          "sha1": "5c920b96ab75181bcf73dd1e45c6ad1c55c8c653",
-          "md5": "4086561cc571ac64f660fb972fee579f"
+          "size": 275291,
+          "sha512": "88087a885ed2d56b0169fb14f44eaf92003aa6d0cd3a2d50882db2452c95f5b19d4ab19b4ca85d889915cbe88900f3237c6f77c30eda8df04f2ecc660e78538e",
+          "sha256": "b3f04785b651b5793078ec86062c0ca0beb8eb1c1b192686d733beab5caf969f",
+          "sha1": "1d678f0ec2d9e75565f2f3eb19136e085c3919d6",
+          "md5": "d487ebfd8f2bf1fc43fa382fd4c93f36"
         }
       ]
     }

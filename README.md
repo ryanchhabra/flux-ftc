@@ -98,6 +98,32 @@ After that, use Flux:
 
 Re-initialize the OpMode on the Driver Station to pick up the new code.
 
+## Connecting over Wi-Fi
+
+Over USB there is nothing to do. To use a Control Hub over Wi-Fi Direct, join its network and
+connect once per session:
+
+```bash
+./gradlew fluxConnect
+```
+
+The Android Studio plugin has a Connect button that does the same thing.
+
+Flux never connects on its own. `adb connect` to an address with nothing listening blocks for 75
+seconds before giving up, so doing it automatically before every deploy would cost every team
+working over USB 75 seconds per deploy to save one command per session. `fluxConnect` checks the
+address is actually reachable first and tells you in about two seconds if it is not.
+
+If your robot is not at the default address:
+
+```groovy
+flux {
+    robotAddress = '192.168.43.1'
+}
+```
+
+`./gradlew fluxDisconnect` drops the connection again.
+
 If something is wrong, run:
 
 ```bash

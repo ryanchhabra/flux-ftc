@@ -6,7 +6,9 @@ import com.android.build.api.variant.AndroidComponentsExtension
 import com.android.build.api.variant.ScopedArtifacts
 import com.android.build.api.variant.Variant
 import dev.ryanchhab.flux.gradle.tasks.FluxAssemble
+import dev.ryanchhab.flux.gradle.tasks.FluxConnect
 import dev.ryanchhab.flux.gradle.tasks.FluxDeviceGuard
+import dev.ryanchhab.flux.gradle.tasks.FluxDisconnect
 import dev.ryanchhab.flux.gradle.tasks.FluxClearBundle
 import dev.ryanchhab.flux.gradle.tasks.FluxDeploy
 import dev.ryanchhab.flux.gradle.tasks.FluxDex
@@ -281,6 +283,19 @@ abstract class FluxPlugin @Inject constructor(
         fluxDex.configure { dependsOn(fluxDeviceGuard) }
 
         // --- fluxPush ---
+        // --- fluxConnect / fluxDisconnect ---
+        // Explicit, never automatic: a doomed `adb connect` blocks for 75 seconds (measured), so
+        // running it before every deploy would cost every USB user 75 seconds to save one command
+        // per session. Run `./gradlew fluxConnect`, or press Connect in the IDE tool window.
+        val fluxConnect = project.tasks.register<FluxConnect>("fluxConnect") {
+            adbPath.set(adbPathProvider)
+            robotAddress.set(extension.robotAddress)
+        }
+        val fluxDisconnect = project.tasks.register<FluxDisconnect>("fluxDisconnect") {
+            adbPath.set(adbPathProvider)
+            robotAddress.set(extension.robotAddress)
+        }
+
         val fluxPush = project.tasks.register<FluxPush>("fluxPush") {
             group = "flux"
             description = "adb push flux_bundle.jar to the deploy dir (CONTRACT.md)."
@@ -327,6 +342,7 @@ abstract class FluxPlugin @Inject constructor(
             description = "Deploy TeamCode to the robot via hot reload (the only command you need)."
             dependsOn(fluxAssemble, fluxDex, fluxPush, fluxReload, fluxTune)
             this.timingService.set(timingService)
+            adbPath.set(adbPathProvider)
             robotAddress.set(extension.robotAddress)
             buildId.set(project.provider { buildIdFileLoc.get().asFile.takeIf { it.isFile }?.readText()?.trim() })
 

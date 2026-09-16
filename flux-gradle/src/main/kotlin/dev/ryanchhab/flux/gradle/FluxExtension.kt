@@ -32,12 +32,18 @@ abstract class FluxExtension @Inject constructor(objects: ObjectFactory) {
     val adbPath: Property<String> = objects.property(String::class.java)
 
     /** Wi-Fi Direct address FTC Control/Driver Hubs use by default. */
+    /**
+     * The robot's Wi-Fi Direct address, used by the explicit `fluxConnect` task and by
+     * `fluxDoctor`'s advice. Flux never connects on its own.
+     *
+     * There used to be an `autoConnect` setting that did it automatically before every deploy,
+     * defaulting to "connect if not already connected". Measured on a machine with the robot
+     * absent, a doomed `adb connect` takes **75 seconds** to time out -- so that default would
+     * have turned a 500 ms deploy into a 75 second one for every team working over USB, which is
+     * most of them most of the time. Connecting is now something you ask for.
+     */
     val robotAddress: Property<String> = objects.property(String::class.java)
         .convention(Defaults.ROBOT_ADDRESS)
-
-    /** How Flux manages `adb connect`/`disconnect` around a deploy. */
-    val autoConnect: Property<AutoConnect> = objects.property(AutoConnect::class.java)
-        .convention(AutoConnect.MAINTAIN)
 
     /**
      * What happens when a deploy is requested while an OpMode is running. Sent to the robot with
@@ -52,20 +58,6 @@ abstract class FluxExtension @Inject constructor(objects: ObjectFactory) {
     }
 }
 
-/**
- * Mirrors Sloth's `AutoConnect` semantics (sloth-teardown.md §3) since it is a proven, well
- * understood model for FTC's usual USB-then-Wi-Fi-Direct workflow.
- */
-enum class AutoConnect {
-    /** Never touch the adb connection; the user manages USB/Wi-Fi themselves. */
-    NEVER,
-
-    /** Connect before a deploy if not already connected; never proactively disconnect. */
-    MAINTAIN,
-
-    /** Actively (re)connect before every deploy and disconnect afterward. */
-    ALWAYS,
-}
 
 /**
  * What a reload does when an OpMode is running on the robot.

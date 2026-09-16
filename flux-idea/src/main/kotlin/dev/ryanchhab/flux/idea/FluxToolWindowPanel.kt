@@ -1,11 +1,13 @@
 package dev.ryanchhab.flux.idea
 
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
+import com.intellij.ui.components.JBTextField
 import com.intellij.ui.components.JBTextArea
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
@@ -59,6 +61,14 @@ class FluxToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
     private val deployButton = JButton("⚡ Deploy").apply {
         icon = AllIcons.Actions.Execute
     }
+    /**
+     * Wi-Fi Direct address of the Control Hub, for the Connect button. Editable because a team can
+     * change it, and pre-filled with the address the SDK ships as the default so the common case
+     * is one click.
+     */
+    private val robotAddressField = JBTextField("192.168.43.1", 12)
+    private val connectButton = JButton("Connect")
+
     private val resultLabel = JBLabel(" ").apply {
         font = font.deriveFont(Font.BOLD)
     }
@@ -107,6 +117,15 @@ class FluxToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
 
         val projectRow = row(projectDirLabel, changeDirButton)
 
+        // Connecting is a deliberate action, not something Flux does before every deploy: a
+        // doomed `adb connect` blocks for 75 seconds, so automating it would cost every team on
+        // USB 75 seconds per deploy to save one click per session.
+        val connectRow = row(
+            JBLabel("Robot over Wi-Fi:"),
+            robotAddressField,
+            connectButton,
+        )
+
         val resultPanel = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
             alignmentX = LEFT_ALIGNMENT
@@ -131,6 +150,8 @@ class FluxToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
             add(deployRow)
             add(Box.createVerticalStrut(4))
             add(projectRow)
+            add(Box.createVerticalStrut(4))
+            add(connectRow)
             add(Box.createVerticalStrut(8))
             add(resultPanel)
             add(Box.createVerticalStrut(8))
@@ -143,6 +164,31 @@ class FluxToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
         add(JBScrollPane(logArea), BorderLayout.CENTER)
 
         deployButton.addActionListener { project.service<FluxService>().deploy() }
+
+        connectButton.addActionListener {
+            val address = robotAddressField.text.trim()
+            if (address.isEmpty()) {
+                resultLabel.text = "Enter the robot's address first"
+                return@addActionListener
+            }
+            // Off the EDT: even with the probe this can take a couple of seconds, and freezing the
+            // IDE for that is exactly the kind of thing that makes a tool feel broken.
+            connectButton.isEnabled = false
+            resultLabel.text = "Connecting to $address..."
+            ApplicationManager.getApplication().executeOnPooledThread {
+                val result = AdbConnector.connect(address)
+                ApplicationManager.getApplication().invokeLater {
+                    connectButton.isEnabled = true
+                    resultLabel.text = when (result) {
+                        is AdbConnector.Result.Connected -> "Connected to ${result.target}"
+                        is AdbConnector.Result.Unreachable ->
+                            "Nothing at ${result.target} — is the robot on, and are you on its Wi-Fi?"
+                        is AdbConnector.Result.Failed -> "Could not connect: ${result.detail}"
+                        AdbConnector.Result.NoAdb -> "adb not found — install Android SDK platform-tools"
+                    }
+                }
+            }
+        }
 
         changeDirButton.addActionListener {
             val descriptor = FileChooserDescriptorFactory.createSingleFolderDescriptor()

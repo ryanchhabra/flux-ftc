@@ -1,6 +1,7 @@
 package dev.ryanchhab.flux.gradle.tasks
 
 import dev.ryanchhab.flux.gradle.FluxTimingService
+import dev.ryanchhab.flux.gradle.AdbConnection
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.provider.Property
@@ -8,6 +9,8 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
+import org.gradle.process.ExecOperations
+import javax.inject.Inject
 import org.gradle.work.DisableCachingByDefault
 
 /**
@@ -30,6 +33,12 @@ abstract class FluxDeploy : DefaultTask() {
 
     @get:Input
     abstract val robotAddress: Property<String>
+
+    @get:Internal
+    abstract val adbPath: Property<String>
+
+    @get:Inject
+    abstract val exec: ExecOperations
 
     @get:Input
     abstract val tierBlocked: Property<Boolean>
@@ -105,7 +114,13 @@ abstract class FluxDeploy : DefaultTask() {
 
         val snapshot = timingService.orNull?.snapshot() ?: emptyMap()
 
-        val header = "FTC Flux  ●  ${robotAddress.getOrElse("?")}  ·  $tierLabel"
+        // The device adb is actually talking to, not the configured robotAddress. Those are
+        // different things far more often than not: this line used to print the Control Hub
+        // Wi-Fi default while the deploy went to an emulator over USB, stating a fabricated fact
+        // on every single deploy. Falls back to the configured address only when adb cannot say.
+        val device = adbPath.orNull?.let { AdbConnection.currentDeviceSerial(exec, it) }
+            ?: robotAddress.getOrElse("?")
+        val header = "FTC Flux  ●  $device  ·  $tierLabel"
         val stageNames = if (isLiveTune) {
             listOf(FluxTimingService.STAGE_LIVE_TUNE)
         } else {
