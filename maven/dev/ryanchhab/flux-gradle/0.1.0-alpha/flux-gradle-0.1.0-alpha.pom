@@ -11,7 +11,7 @@
   <version>0.1.0-alpha</version>
   <name>FTC Flux Gradle Plugin</name>
   <description>Compile, dex, push and hot-reload FTC TeamCode in well under a second.</description>
-  <url>https://github.com/ryanchhabra/ftc-flux</url>
+  <url>https://github.com/ryanchhabra/flux-ftc</url>
   <licenses>
     <license>
       <name>MIT License</name>

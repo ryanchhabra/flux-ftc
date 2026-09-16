@@ -56,8 +56,8 @@ tasks.withType<Test> {
 // Plugin Portal publishing needs these; harmless locally, required before a real release.
 // See docs/design/distribution.md.
 gradlePlugin {
-    website = "https://github.com/ryanchhabra/ftc-flux"
-    vcsUrl = "https://github.com/ryanchhabra/ftc-flux"
+    website = "https://github.com/ryanchhabra/flux-ftc"
+    vcsUrl = "https://github.com/ryanchhabra/flux-ftc"
 }
 
 publishing {
@@ -65,7 +65,7 @@ publishing {
         pom {
             name = "FTC Flux Gradle Plugin"
             description = "Compile, dex, push and hot-reload FTC TeamCode in well under a second."
-            url = "https://github.com/ryanchhabra/ftc-flux"
+            url = "https://github.com/ryanchhabra/flux-ftc"
             licenses {
                 license {
                     name = "MIT License"

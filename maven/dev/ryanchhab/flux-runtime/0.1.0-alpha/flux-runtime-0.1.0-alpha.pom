@@ -13,7 +13,7 @@
   <packaging>aar</packaging>
   <name>FTC Flux Runtime</name>
   <description>On-robot runtime for FTC Flux hot code reload: classloaders, reload engine, and live tuning. Ships inside the Robot Controller APK.</description>
-  <url>https://github.com/ryanchhabra/ftc-flux</url>
+  <url>https://github.com/ryanchhabra/flux-ftc</url>
   <licenses>
     <license>
       <name>MIT License</name>

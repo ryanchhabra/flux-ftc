@@ -71,7 +71,7 @@ publishing {
                 name = 'FTC Flux Runtime'
                 description = 'On-robot runtime for FTC Flux hot code reload: classloaders, ' +
                         'reload engine, and live tuning. Ships inside the Robot Controller APK.'
-                url = 'https://github.com/ryanchhabra/ftc-flux'
+                url = 'https://github.com/ryanchhabra/flux-ftc'
                 licenses {
                     license {
                         name = 'MIT License'
