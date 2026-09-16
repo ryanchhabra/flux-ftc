@@ -58,14 +58,28 @@ class LiveTuningPanel(private val project: Project) : JPanel() {
     }
     private val rowsScroll = JBScrollPane(rowsPanel).apply {
         border = JBUI.Borders.empty()
-        preferredSize = Dimension(10, 220)
-        maximumSize = Dimension(Int.MAX_VALUE, 220)
+        horizontalScrollBarPolicy = JBScrollPane.HORIZONTAL_SCROLLBAR_NEVER
+        // No fixed height: a hard 220px cap starved the field list while the deploy log below it
+        // took the remaining space. Let it ask for what its rows need and shrink gracefully.
+        preferredSize = Dimension(10, 260)
     }
     private var expanded = true
 
     private var isRefreshing = false
 
-    private fun row(vararg comps: JComponent) = JPanel().apply {
+    /**
+     * A left-aligned row whose height tracks its content.
+     *
+     * getMaximumSize() is OVERRIDDEN rather than assigned. Assigning
+     * `maximumSize = Dimension(MAX, preferredSize.height)` in an `apply {}` snapshots the height at
+     * construction, before the row has been laid out and before a JTextField reports its real
+     * height. The cap then comes out too small, BoxLayout hands the row fewer pixels than it needs,
+     * and the contents draw past the bottom edge and overlap the next row -- which is exactly what
+     * happened on the first build of this panel. Overriding recomputes on every layout pass.
+     */
+    private fun row(vararg comps: JComponent) = object : JPanel() {
+        override fun getMaximumSize() = Dimension(Int.MAX_VALUE, preferredSize.height)
+    }.apply {
         layout = BoxLayout(this, BoxLayout.X_AXIS)
         alignmentX = LEFT_ALIGNMENT
         comps.forEachIndexed { i, c ->
@@ -74,7 +88,6 @@ class LiveTuningPanel(private val project: Project) : JPanel() {
             add(c)
         }
         add(Box.createHorizontalGlue())
-        maximumSize = Dimension(Int.MAX_VALUE, preferredSize.height)
     }
 
     init {
@@ -206,14 +219,16 @@ class LiveTuningPanel(private val project: Project) : JPanel() {
         /** Guards against the programmatic slider/textfield updates each other's listeners fire. */
         private var syncing = false
 
-        val component: JPanel = JPanel().apply {
+        val component: JPanel = object : JPanel() {
+            override fun getMaximumSize() = Dimension(Int.MAX_VALUE, preferredSize.height)
+        }.apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
             alignmentX = LEFT_ALIGNMENT
             infoLabel.alignmentX = LEFT_ALIGNMENT
             add(infoLabel)
             add(Box.createVerticalStrut(2))
             add(buildControlRow())
-            maximumSize = Dimension(Int.MAX_VALUE, preferredSize.height)
+            // See row()'s doc: the cap must be computed per layout pass, not snapshotted here.
         }
 
         init {
@@ -249,7 +264,9 @@ class LiveTuningPanel(private val project: Project) : JPanel() {
         }
 
         private fun buildTextControl(adb: java.io.File?): JPanel {
-            val field = JBTextField(entry.sourceValue, 14)
+            val field = JBTextField(entry.sourceValue, 14).apply {
+                maximumSize = Dimension(preferredSize.width * 2, preferredSize.height)
+            }
             fun commitText() {
                 val text = field.text
                 val literal = toSourceLiteral(entry.type, text)
@@ -276,7 +293,9 @@ class LiveTuningPanel(private val project: Project) : JPanel() {
             }
 
             val slider = JSlider(0, SLIDER_RESOLUTION, valueToSlider(current, rangeMin, rangeMax))
-            val textField = JBTextField(formatNumber(entry.type, current), 8)
+            val textField = JBTextField(formatNumber(entry.type, current), 8).apply {
+                maximumSize = Dimension(preferredSize.width * 2, preferredSize.height)
+            }
 
             if (adb == null) {
                 textField.toolTipText = "adb not found -- live push while dragging is disabled, but committing still writes the source file."
