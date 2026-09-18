@@ -17,13 +17,29 @@ import java.nio.file.Files
  */
 class SourceFieldWriterTest {
 
+    /**
+     * A frozen copy of `DriveConstants.java`, loaded from this module's own test resources.
+     *
+     * It deliberately does NOT read `test-ftc-project/sdk/.../DriveConstants.java`, which is what
+     * this did originally. That path is a *live* file: it is the thing emulator runs edit to prove
+     * live tuning works, so a tuning session would leave `kP` at whatever it was last dragged to
+     * and these tests -- which assert on the literal `0.042` and on an exact file-length delta --
+     * would start failing for reasons that say nothing about [SourceFieldWriter]. That happened.
+     *
+     * It was also unreachable: `test-ftc-project/sdk/` is gitignored, so on a fresh clone the
+     * fixture did not exist at all and these tests could only ever fail. Worse, the file was read
+     * at runtime rather than declared as a task input, so Gradle could not tell when it changed
+     * and would report a cached PASS over a fixture that had since drifted.
+     *
+     * Keep this file and `test-ftc-project/fixtures/teamcode/DriveConstants.java` in sync by hand
+     * if the fixture's shape ever changes; they are intentionally separate copies.
+     */
     private fun fixtureCopy(): File {
-        val src = File(
-            "../test-ftc-project/sdk/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/DriveConstants.java",
-        )
-        assertTrue(src.isFile, "fixture not found at ${src.absolutePath} -- run tests from flux-idea/")
+        val text = javaClass.getResourceAsStream("/DriveConstants.java")
+            ?.bufferedReader()?.use { it.readText() }
+        assertTrue(text != null, "fixture DriveConstants.java missing from flux-idea test resources")
         val tmp = Files.createTempFile("DriveConstants", ".java").toFile()
-        tmp.writeText(src.readText())
+        tmp.writeText(text!!)
         return tmp
     }
 
