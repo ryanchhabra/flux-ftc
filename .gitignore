@@ -10,6 +10,10 @@ test-ftc-project/consumer/
 # --- Build output -------------------------------------------------------------------------
 build/
 out/
+# Eclipse-style output directory. IDE Java/Kotlin tooling writes here instead of build/, and it
+# copies sources next to the .class files, so without this a clean tree shows ~6500 lines of
+# duplicated .kt that *.class below does not catch.
+bin/
 .gradle/
 *.class
 *.jar
